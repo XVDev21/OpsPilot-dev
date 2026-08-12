@@ -1,0 +1,22 @@
+{
+  "package": "OpsPilot AI Greenfield Codex Package",
+  "purpose": "Blank-repository immediate frontend build, then Django full stack",
+  "development_environment": "Windows PowerShell only",
+  "frontend_first_visible_scope": "approximately 60 percent of final visible frontend in first coding run",
+  "files": [
+    "AGENTS.md",
+    "CODEX_START_NOW_PROMPT.md",
+    "IMPLEMENTATION_STATUS.md",
+    "README.md",
+    "START_HERE.md",
+    "docs/00_BOOTSTRAP_FROM_SCRATCH.md",
+    "docs/01_PRODUCT_ARCHITECTURE.md",
+    "docs/02_FRONTEND_PART_1_BUILD_NOW.md",
+    "docs/03_FRONTEND_PART_2_AUTH_AND_LIVE_API.md",
+    "docs/04_BACKEND_PART_1_DJANGO_FOUNDATION.md",
+    "docs/05_BACKEND_PART_2_WORKFLOW_ENGINE.md",
+    "docs/06_END_TO_END_AND_DEPLOYMENT.md",
+    "docs/07_WINDOWS_TESTING_AND_SECURITY.md",
+    "docs/08_OFFICIAL_REFERENCE_CHECKLIST.md"
+  ]
+}
