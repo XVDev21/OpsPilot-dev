@@ -7,7 +7,7 @@ export function SiteFooter() {
     <footer className="border-t border-border bg-surface/55">
       <div className="page-container grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr] md:py-16">
         <div>
-          <Link href="/" aria-label="OpsPilot AI home" className="inline-flex rounded-xl">
+          <Link href="/" aria-label="OpsPilot AI home" className="inline-flex min-h-11 items-center rounded-xl">
             <BrandLockup />
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-6 text-foreground-muted">
@@ -17,13 +17,13 @@ export function SiteFooter() {
         <div>
           <h2 className="text-sm font-bold text-foreground">Explore</h2>
           <div className="mt-3 grid gap-1 text-sm text-foreground-muted">
-            <Link className="w-fit py-2 hover:text-foreground" href="/product">
+            <Link className="inline-flex min-h-11 w-fit items-center hover:text-foreground" href="/product">
               Product
             </Link>
-            <Link className="w-fit py-2 hover:text-foreground" href="/security">
+            <Link className="inline-flex min-h-11 w-fit items-center hover:text-foreground" href="/security">
               Security
             </Link>
-            <Link className="w-fit py-2 hover:text-foreground" href="/app/workflows">
+            <Link className="inline-flex min-h-11 w-fit items-center hover:text-foreground" href="/demo/workflows">
               Workflows
             </Link>
           </div>
@@ -34,7 +34,7 @@ export function SiteFooter() {
             Demo Mode runs locally with deterministic, schema-validated results. No account required.
           </p>
           <Link
-            href="/app"
+            href="/demo"
             className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-primary hover:text-primary-hover"
           >
             Open Demo Mode <ArrowRight aria-hidden="true" className="size-4" />

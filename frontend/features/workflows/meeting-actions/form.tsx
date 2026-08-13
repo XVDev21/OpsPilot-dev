@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { AppMode } from "@/components/providers/app-mode-provider";
 import {
   meetingActionsInputSchema,
   meetingActionsSampleInput,
@@ -23,15 +24,17 @@ const emptyInput: MeetingActionsInput = {
 
 export function MeetingActionsForm({
   onSubmitResult,
+  mode,
 }: {
-  onSubmitResult: (input: MeetingActionsInput) => void;
+  onSubmitResult: (input: MeetingActionsInput) => Promise<void> | void;
+  mode: AppMode;
 }) {
   const {
     register,
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<MeetingActionsInput>({
     resolver: zodResolver(meetingActionsInputSchema),
     defaultValues: emptyInput,
@@ -39,7 +42,7 @@ export function MeetingActionsForm({
   const { fields, append, remove } = useFieldArray({ control, name: "participants" });
 
   return (
-    <WorkflowFormShell>
+    <WorkflowFormShell mode={mode}>
       <form onSubmit={handleSubmit(onSubmitResult)} noValidate>
         <FormSection title="Meeting" description="Paste working notes as they are; no prompt formatting needed.">
           <Field id="meeting-title" label="Meeting title" error={errors.title?.message}>
@@ -54,7 +57,11 @@ export function MeetingActionsForm({
           <Field
             id="meeting-notes"
             label="Meeting notes"
-            description="For this deterministic demo, prefixes such as Decision:, Action:, and Open question: make extraction visible and repeatable."
+            description={
+              mode === "demo"
+                ? "Prefixes such as Decision:, Action:, and Open question: make deterministic extraction visible and repeatable."
+                : "Use labels such as Decision:, Action:, and Open question: when they make the source notes clearer."
+            }
             error={errors.notes?.message}
           >
             <Textarea
@@ -119,15 +126,20 @@ export function MeetingActionsForm({
 
         <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)}>
+            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)} disabled={isSubmitting}>
               <RotateCcw aria-hidden="true" className="size-4" /> Reset
             </Button>
-            <Button type="button" variant="secondary" onClick={() => reset(meetingActionsSampleInput)}>
+            <Button type="button" variant="secondary" onClick={() => reset(meetingActionsSampleInput)} disabled={isSubmitting}>
               Load sample
             </Button>
           </div>
-          <Button type="submit" size="lg">
-            <Sparkles aria-hidden="true" className="size-4" /> Run demo extraction
+          <Button type="submit" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Sparkles aria-hidden="true" className="size-4" />
+            )}
+            {isSubmitting ? "Submitting…" : mode === "live" ? "Run live extraction" : "Run demo extraction"}
           </Button>
         </div>
       </form>

@@ -45,7 +45,7 @@ export default function ProductPage() {
               </h2>
             </div>
             <Button asChild size="lg">
-              <Link href="/app/workflows">Open workflow catalog <ArrowRight aria-hidden="true" className="size-4" /></Link>
+              <Link href="/demo/workflows">Open workflow catalog <ArrowRight aria-hidden="true" className="size-4" /></Link>
             </Button>
           </div>
         </section>

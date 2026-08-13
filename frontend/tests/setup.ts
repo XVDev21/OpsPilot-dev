@@ -4,9 +4,31 @@ import { afterEach, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   document.documentElement.className = "";
   document.body.removeAttribute("data-scroll-locked");
   document.body.removeAttribute("style");
+});
+
+const storageValues = new Map<string, string>();
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  value: {
+    getItem: (key: string) => storageValues.get(key) ?? null,
+    setItem(key: string, value: string) {
+      storageValues.set(key, value);
+    },
+    removeItem(key: string) {
+      storageValues.delete(key);
+    },
+    clear() {
+      storageValues.clear();
+    },
+    key: (index: number) => [...storageValues.keys()][index] ?? null,
+    get length() {
+      return storageValues.size;
+    },
+  } satisfies Storage,
 });
 
 Object.defineProperty(window, "matchMedia", {

@@ -13,7 +13,7 @@ describe("landing page", () => {
     expect(screen.getAllByText("Work → Status Update").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /Try the workflows/i })).toHaveAttribute(
       "href",
-      "/app/workflows",
+      "/demo/workflows",
     );
   });
 });

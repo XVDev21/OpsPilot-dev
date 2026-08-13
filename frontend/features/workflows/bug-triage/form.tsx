@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { AppMode } from "@/components/providers/app-mode-provider";
 import {
   bugTriageInputSchema,
   bugTriageSampleInput,
@@ -26,15 +27,17 @@ const emptyInput: BugTriageInput = {
 
 export function BugTriageForm({
   onSubmitResult,
+  mode,
 }: {
-  onSubmitResult: (input: BugTriageInput) => void;
+  onSubmitResult: (input: BugTriageInput) => Promise<void> | void;
+  mode: AppMode;
 }) {
   const {
     register,
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<BugTriageInput>({
     resolver: zodResolver(bugTriageInputSchema),
     defaultValues: emptyInput,
@@ -42,7 +45,7 @@ export function BugTriageForm({
   const { fields, append, remove } = useFieldArray({ control, name: "evidence" });
 
   return (
-    <WorkflowFormShell>
+    <WorkflowFormShell mode={mode}>
       <form onSubmit={handleSubmit(onSubmitResult)} noValidate>
         <FormSection title="Issue" description="Describe the observed problem without diagnosing it yet.">
           <Field id="bug-title" label="Issue title" error={errors.title?.message}>
@@ -174,15 +177,20 @@ export function BugTriageForm({
 
         <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)}>
+            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)} disabled={isSubmitting}>
               <RotateCcw aria-hidden="true" className="size-4" /> Reset
             </Button>
-            <Button type="button" variant="secondary" onClick={() => reset(bugTriageSampleInput)}>
+            <Button type="button" variant="secondary" onClick={() => reset(bugTriageSampleInput)} disabled={isSubmitting}>
               Load sample
             </Button>
           </div>
-          <Button type="submit" size="lg">
-            <Sparkles aria-hidden="true" className="size-4" /> Run demo triage
+          <Button type="submit" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Sparkles aria-hidden="true" className="size-4" />
+            )}
+            {isSubmitting ? "Submitting…" : mode === "live" ? "Run live triage" : "Run demo triage"}
           </Button>
         </div>
       </form>

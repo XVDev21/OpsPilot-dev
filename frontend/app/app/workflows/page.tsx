@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 export default function WorkflowCatalogPage() {
   return (
     <div className="mx-auto max-w-[86rem]">
-      <Badge tone="primary">3 available workflows</Badge>
+      <Badge tone="success">3 live-ready workflows</Badge>
       <h1 className="mt-4 text-balance text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">
         Workflow catalog
       </h1>
       <p className="mt-3 max-w-2xl text-base leading-7 text-foreground-muted">
-        Pick the artifact you need. Every workflow includes guided input, validation, a deterministic sample, and a copy-ready result.
+        Pick the artifact you need. Every workflow includes guided input, validation, Live Mode, an explicit deterministic fallback, and a copy-ready result.
       </p>
 
       <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
