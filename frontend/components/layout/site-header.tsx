@@ -16,7 +16,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/80 bg-background/88 backdrop-blur-xl">
       <div className="page-container flex h-[4.5rem] items-center justify-between gap-4">
-        <Link href="/" aria-label="OpsPilot AI home" className="rounded-xl">
+        <Link href="/" aria-label="OpsPilot AI home" className="inline-flex min-h-11 items-center rounded-xl">
           <BrandLockup />
         </Link>
 
@@ -34,10 +34,10 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 md:flex">
           <Button asChild variant="ghost">
-            <Link href="/app">Sign in</Link>
+            <Link href="/sign-in">Sign in</Link>
           </Button>
           <Button asChild>
-            <Link href="/app">
+            <Link href="/sign-up">
               Start free
               <ArrowUpRight aria-hidden="true" className="size-4" />
             </Link>
@@ -45,8 +45,8 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
-          <Button asChild size="sm">
-            <Link href="/app">Try demo</Link>
+          <Button asChild>
+            <Link href="/demo">Try demo</Link>
           </Button>
           <Sheet
             title="Explore OpsPilot"
@@ -74,11 +74,17 @@ export function SiteHeader() {
                 </Link>
               ))}
               <Link
-                href="/app"
+                href="/demo"
                 className="mt-3 flex min-h-12 items-center justify-between rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"
               >
                 Enter Demo Mode
                 <ArrowUpRight aria-hidden="true" className="size-4" />
+              </Link>
+              <Link
+                href="/sign-in"
+                className="mt-2 flex min-h-12 items-center rounded-xl px-3 text-base font-semibold hover:bg-surface-soft"
+              >
+                Sign in
               </Link>
             </nav>
             <div className="mt-8 border-t border-border pt-5">

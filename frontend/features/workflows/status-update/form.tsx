@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RotateCcw, Sparkles } from "lucide-react";
+import { LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { AppMode } from "@/components/providers/app-mode-provider";
 import {
   statusUpdateInputSchema,
   statusUpdateSampleInput,
@@ -22,27 +23,33 @@ const emptyInput: StatusUpdateInput = {
 
 export function StatusUpdateForm({
   onSubmitResult,
+  mode,
 }: {
-  onSubmitResult: (input: StatusUpdateInput) => void;
+  onSubmitResult: (input: StatusUpdateInput) => Promise<void> | void;
+  mode: AppMode;
 }) {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<StatusUpdateInput>({
     resolver: zodResolver(statusUpdateInputSchema),
     defaultValues: emptyInput,
   });
 
   return (
-    <WorkflowFormShell>
+    <WorkflowFormShell mode={mode}>
       <form onSubmit={handleSubmit(onSubmitResult)} noValidate>
         <FormSection title="Work notes" description="Capture progress as fragments; the result handles presentation.">
           <Field
             id="status-notes"
             label="Rough notes"
-            description="For predictable Demo Mode grouping, use Completed:, In progress:, Blocked:, and Next: when helpful."
+            description={
+              mode === "demo"
+                ? "For predictable Demo Mode grouping, use Completed:, In progress:, Blocked:, and Next: when helpful."
+                : "Use Completed:, In progress:, Blocked:, and Next: when those labels clarify your rough notes."
+            }
             error={errors.notes?.message}
           >
             <Textarea
@@ -77,15 +84,20 @@ export function StatusUpdateForm({
 
         <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)}>
+            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)} disabled={isSubmitting}>
               <RotateCcw aria-hidden="true" className="size-4" /> Reset
             </Button>
-            <Button type="button" variant="secondary" onClick={() => reset(statusUpdateSampleInput)}>
+            <Button type="button" variant="secondary" onClick={() => reset(statusUpdateSampleInput)} disabled={isSubmitting}>
               Load sample
             </Button>
           </div>
-          <Button type="submit" size="lg">
-            <Sparkles aria-hidden="true" className="size-4" /> Run demo update
+          <Button type="submit" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Sparkles aria-hidden="true" className="size-4" />
+            )}
+            {isSubmitting ? "Submitting…" : mode === "live" ? "Run live update" : "Run demo update"}
           </Button>
         </div>
       </form>

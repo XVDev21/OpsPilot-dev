@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { WorkflowRunner } from "@/features/workflows/workflow-runner";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { DemoWorkflowRunner } from "@/features/workflows/workflow-runner";
+
+function renderRunner(workflowId: "bug-triage" | "meeting-actions" | "status-update") {
+  return render(
+    <QueryProvider>
+      <DemoWorkflowRunner workflowId={workflowId} />
+    </QueryProvider>,
+  );
+}
 
 describe("Demo Mode workflow runner", () => {
   it.each([
@@ -10,7 +19,7 @@ describe("Demo Mode workflow runner", () => {
     ["status-update", "Run demo update", "Copy-ready update"],
   ] as const)("loads sample input and renders the %s result", async (workflowId, action, expected) => {
     const user = userEvent.setup();
-    render(<WorkflowRunner workflowId={workflowId} />);
+    renderRunner(workflowId);
     await user.click(screen.getByRole("button", { name: "Load sample" }));
     await user.click(screen.getByRole("button", { name: action }));
     expect(await screen.findByText(expected)).toBeInTheDocument();
@@ -19,7 +28,7 @@ describe("Demo Mode workflow runner", () => {
 
   it("copies a generated result", async () => {
     const user = userEvent.setup();
-    render(<WorkflowRunner workflowId="status-update" />);
+    renderRunner("status-update");
     await user.click(screen.getByRole("button", { name: "Load sample" }));
     await user.click(screen.getByRole("button", { name: "Run demo update" }));
     await user.click(await screen.findByRole("button", { name: "Copy result" }));

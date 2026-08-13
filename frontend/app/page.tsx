@@ -54,7 +54,7 @@ export default function Home() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
-                  <Link href="/app/workflows">
+                  <Link href="/demo/workflows">
                     Try the workflows <ArrowRight aria-hidden="true" className="size-4" />
                   </Link>
                 </Button>
@@ -180,7 +180,7 @@ export default function Home() {
               [Rows3, "Structured workflow outputs"],
               [LockKeyhole, "User-controlled input"],
               [Gauge, "Technical findings stay reviewable"],
-              [ShieldCheck, "Authenticated history later"],
+              [ShieldCheck, "Authenticated account and history"],
             ].map(([Icon, label]) => (
               <div key={label as string} className="flex min-h-28 items-center gap-3 bg-surface px-5 py-6">
                 <span className="grid size-10 place-items-center rounded-xl bg-surface-accent text-primary">
@@ -207,7 +207,7 @@ export default function Home() {
                   </p>
                 </div>
                 <Button asChild size="lg" className="relative mt-7 shrink-0 md:mt-0">
-                  <Link href="/app">Open OpsPilot Demo <ArrowRight aria-hidden="true" className="size-4" /></Link>
+                  <Link href="/demo">Open OpsPilot Demo <ArrowRight aria-hidden="true" className="size-4" /></Link>
                 </Button>
               </div>
             </Reveal>

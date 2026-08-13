@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { ArrowUpRight, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { WorkflowIcon } from "@/features/workflows/workflow-icon";
@@ -28,12 +29,15 @@ export function WorkflowCard({
   mode = "marketing",
 }: {
   workflow: WorkflowDefinition;
-  mode?: "marketing" | "app" | "catalog";
+  mode?: "marketing" | "app" | "catalog" | "demo";
 }) {
   const tone = toneStyles[workflow.tone];
+  const href = (mode === "app" || mode === "catalog"
+    ? `/app/workflows/${workflow.id}`
+    : `/demo/workflows/${workflow.id}`) as Route;
   return (
     <Link
-      href={`/app/workflows/${workflow.id}`}
+      href={href}
       className={cn(
         "group relative flex min-h-full flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface-raised p-5 shadow-[var(--shadow-sm)] transition-[transform,border-color,box-shadow] duration-240 ease-out hover:-translate-y-1 hover:border-primary/35 hover:shadow-[var(--shadow-md)] focus-visible:-translate-y-1 sm:p-6",
         mode === "app" && "min-h-[19rem] justify-between",

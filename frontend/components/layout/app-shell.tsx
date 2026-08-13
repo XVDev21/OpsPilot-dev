@@ -1,26 +1,75 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LayoutGrid, Menu, Workflow } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FlaskConical,
+  History,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  RadioTower,
+  Settings,
+  Workflow,
+} from "lucide-react";
 import type { ReactNode } from "react";
+import { signOutAction } from "@/app/app/actions";
 import { BrandLockup } from "@/components/brand/logo-mark";
+import { useAppMode } from "@/components/providers/app-mode-provider";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import type { AppUser } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutGrid, exact: true },
   { href: "/app/workflows", label: "Workflows", icon: Workflow, exact: false },
+  { href: "/app/history", label: "History", icon: History, exact: false },
+  { href: "/app/settings", label: "Settings", icon: Settings, exact: false },
 ] as const satisfies readonly {
   href: Route;
   label: string;
   icon: typeof LayoutGrid;
   exact: boolean;
 }[];
+
+const trustedAvatarHosts = new Set(["images.workoscdn.com", "lh3.googleusercontent.com"]);
+
+function trustedAvatarUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && trustedAvatarHosts.has(url.hostname) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function UserAvatar({ user, size = "default" }: { user: AppUser; size?: "default" | "small" }) {
+  const avatarUrl = trustedAvatarUrl(user.avatarUrl);
+  const sizeClass = size === "small" ? "size-8" : "size-10";
+  return (
+    <span
+      className={cn(
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/12 text-xs font-extrabold text-primary",
+        sizeClass,
+      )}
+      aria-hidden="true"
+    >
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt="" fill sizes={size === "small" ? "32px" : "40px"} className="object-cover" />
+      ) : (
+        user.initials
+      )}
+    </span>
+  );
+}
 
 function AppNavigation({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
@@ -51,7 +100,82 @@ function AppNavigation({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+function ModeStatus({ compact = false }: { compact?: boolean }) {
+  const { mode } = useAppMode();
+  const live = mode === "live";
+  return (
+    <div className={cn("rounded-xl bg-surface-soft", compact ? "p-3" : "p-3.5")}>
+      <div className="flex items-center justify-between gap-2">
+        <Badge tone={live ? "success" : "primary"}>{live ? "Live" : "Demo Mode"}</Badge>
+        {live ? (
+          <RadioTower aria-hidden="true" className="size-4 text-success" />
+        ) : (
+          <FlaskConical aria-hidden="true" className="size-4 text-primary" />
+        )}
+      </div>
+      {!compact ? (
+        <p className="mt-2 text-xs leading-5 text-foreground-muted">
+          {live
+            ? "Authenticated runs use the Django API when it is available."
+            : "Deterministic local results with no provider request."}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function AccountMenu({ user }: { user: AppUser }) {
+  return (
+    <details className="group relative hidden sm:block">
+      <summary className="flex min-h-11 list-none items-center gap-2 rounded-xl border border-border bg-surface-raised py-1.5 pr-2.5 pl-1.5 text-left shadow-[var(--shadow-sm)] transition-colors marker:hidden hover:border-primary/35 [&::-webkit-details-marker]:hidden">
+        <UserAvatar user={user} size="small" />
+        <span className="hidden max-w-36 truncate text-xs font-bold text-foreground lg:block">
+          {user.displayName}
+        </span>
+        <ChevronDown aria-hidden="true" className="size-3.5 text-foreground-soft transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="absolute top-[calc(100%+0.5rem)] right-0 z-40 w-72 rounded-2xl border border-border bg-surface-raised p-3 shadow-[var(--shadow-panel)]">
+        <div className="flex items-center gap-3 rounded-xl bg-surface-soft p-3">
+          <UserAvatar user={user} />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-foreground">{user.displayName}</p>
+            <p className="truncate text-xs text-foreground-muted">{user.email}</p>
+          </div>
+        </div>
+        <Link href="/app/settings" className="mt-2 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-foreground-muted hover:bg-surface-soft hover:text-foreground">
+          <Settings aria-hidden="true" className="size-4" /> Account settings
+        </Link>
+        <form action={signOutAction}>
+          <button type="submit" className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-sm font-semibold text-foreground-muted hover:bg-surface-soft hover:text-foreground">
+            <LogOut aria-hidden="true" className="size-4" /> Sign out
+          </button>
+        </form>
+      </div>
+    </details>
+  );
+}
+
+function MobileAccount({ user }: { user: AppUser }) {
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <div className="flex items-center gap-3">
+        <UserAvatar user={user} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">{user.displayName}</p>
+          <p className="truncate text-xs text-foreground-muted">{user.email}</p>
+        </div>
+      </div>
+      <form action={signOutAction} className="mt-3">
+        <Button type="submit" variant="secondary" className="w-full">
+          <LogOut aria-hidden="true" className="size-4" /> Sign out
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+export function AppShell({ children, user }: { children: ReactNode; user: AppUser }) {
+  const { mode } = useAppMode();
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[16rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface/72 p-4 backdrop-blur-xl md:flex">
@@ -60,15 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <AppNavigation />
         <div className="mt-auto grid gap-4 border-t border-border pt-5">
-          <div className="rounded-xl bg-surface-soft p-3">
-            <div className="flex items-center justify-between gap-2">
-              <Badge tone="primary">Demo Mode</Badge>
-              <span className="size-2 rounded-full bg-success shadow-[0_0_0_4px_color-mix(in_srgb,var(--success)_12%,transparent)]" />
-            </div>
-            <p className="mt-2 text-xs leading-5 text-foreground-muted">
-              Local deterministic results. No provider connected.
-            </p>
-          </div>
+          <ModeStatus />
           <ThemeSelector />
         </div>
       </aside>
@@ -78,8 +194,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3 md:hidden">
             <Sheet
               side="left"
-              title="OpsPilot Demo"
-              description="Choose a task-oriented workflow."
+              title="OpsPilot workspace"
+              description="Choose a workflow, review history, or update your settings."
               trigger={
                 <Button variant="secondary" size="icon" aria-label="Open app navigation">
                   <Menu aria-hidden="true" className="size-5" />
@@ -87,26 +203,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               }
             >
               <AppNavigation mobile />
-              <div className="mt-8 border-t border-border pt-5">
-                <Badge tone="primary">Demo Mode</Badge>
-                <p className="mt-2 text-xs leading-5 text-foreground-muted">
-                  Results are deterministic and stay in this browser session.
-                </p>
+              <div className="mt-7 border-t border-border pt-5">
+                <ModeStatus />
                 <ThemeSelector className="mt-4" />
               </div>
+              <MobileAccount user={user} />
             </Sheet>
-            <Link href="/app" aria-label="OpsPilot app overview" className="rounded-xl">
+            <Link href="/app" aria-label="OpsPilot app overview" className="grid size-11 place-items-center rounded-xl">
               <BrandLockup compact />
             </Link>
           </div>
           <div className="hidden md:block">
             <p className="text-xs font-semibold tracking-[0.08em] text-foreground-soft uppercase">
-              Task workspace
+              Authenticated workspace
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge tone="primary">Demo Mode</Badge>
-            <span className="hidden text-xs text-foreground-soft sm:inline">No sign-in required</span>
+            <Badge tone={mode === "live" ? "success" : "primary"}>
+              {mode === "live" ? "Live" : "Demo"}
+            </Badge>
+            <AccountMenu user={user} />
           </div>
         </header>
         <main id="main-content" className="min-w-0 px-3 py-7 sm:px-6 md:px-8 md:py-9 xl:px-10">

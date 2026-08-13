@@ -7,8 +7,8 @@ import { WorkflowCard } from "@/features/workflows/workflow-card";
 import { workflows } from "@/features/workflows/registry";
 
 export const metadata: Metadata = {
-  title: "Demo workspace",
-  description: "Choose an OpsPilot workflow and run it in deterministic Demo Mode.",
+  title: "Workspace",
+  description: "Choose an OpsPilot workflow and produce a structured result.",
 };
 
 export default function AppOverviewPage() {
@@ -16,7 +16,7 @@ export default function AppOverviewPage() {
     <div className="mx-auto max-w-[86rem]">
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <Badge tone="primary">Demo workspace</Badge>
+          <Badge tone="success">Authenticated workspace</Badge>
           <h1 className="mt-4 text-balance text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">
             What would you like to automate?
           </h1>

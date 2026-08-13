@@ -1,72 +1,122 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
-import { FileCheck2, LockKeyhole } from "lucide-react";
+import { AlertTriangle, FileCheck2, LoaderCircle, LockKeyhole, RefreshCcw } from "lucide-react";
 import { useState } from "react";
+import { useAppMode, type AppMode } from "@/components/providers/app-mode-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { BugTriageForm } from "@/features/workflows/bug-triage/form";
-import type { BugTriageInput, BugTriageOutput } from "@/features/workflows/bug-triage/schema";
+import type { BugTriageInput } from "@/features/workflows/bug-triage/schema";
 import { CopyResultButton } from "@/features/workflows/copy-result-button";
 import { MeetingActionsForm } from "@/features/workflows/meeting-actions/form";
-import type {
-  MeetingActionsInput,
-  MeetingActionsOutput,
-} from "@/features/workflows/meeting-actions/schema";
-import { BugResult, MeetingResult, StatusResult } from "@/features/workflows/result-panels";
+import type { MeetingActionsInput } from "@/features/workflows/meeting-actions/schema";
+import { runToResult } from "@/features/workflows/run-adapter";
 import { StatusUpdateForm } from "@/features/workflows/status-update/form";
-import type { StatusUpdateInput, StatusUpdateOutput } from "@/features/workflows/status-update/schema";
+import type { StatusUpdateInput } from "@/features/workflows/status-update/schema";
 import type { WorkflowId } from "@/features/workflows/types";
+import { resultToText, WorkflowResultContent } from "@/features/workflows/workflow-result";
+import { browserApi } from "@/lib/api/browser-client";
+import { ApiError } from "@/lib/api/errors";
 import { runDemoWorkflow, type DemoResult } from "@/lib/demo/run-demo";
 
-function resultToText(result: DemoResult) {
-  return JSON.stringify(result.output, null, 2);
-}
+type WorkflowInput = BugTriageInput | MeetingActionsInput | StatusUpdateInput;
 
 function WorkflowForm({
   workflowId,
-  onResult,
+  mode,
+  onSubmit,
 }: {
   workflowId: WorkflowId;
-  onResult: (result: DemoResult) => void;
+  mode: AppMode;
+  onSubmit: (input: WorkflowInput) => Promise<void>;
 }) {
   if (workflowId === "bug-triage") {
-    return (
-      <BugTriageForm
-        onSubmitResult={(input: BugTriageInput) => onResult(runDemoWorkflow(workflowId, input))}
-      />
-    );
+    return <BugTriageForm mode={mode} onSubmitResult={onSubmit} />;
   }
   if (workflowId === "meeting-actions") {
-    return (
-      <MeetingActionsForm
-        onSubmitResult={(input: MeetingActionsInput) => onResult(runDemoWorkflow(workflowId, input))}
-      />
-    );
+    return <MeetingActionsForm mode={mode} onSubmitResult={onSubmit} />;
   }
+  return <StatusUpdateForm mode={mode} onSubmitResult={onSubmit} />;
+}
+
+function ErrorPanel({ error, onRetry }: { error: ApiError; onRetry: (() => void) | null }) {
   return (
-    <StatusUpdateForm
-      onSubmitResult={(input: StatusUpdateInput) => onResult(runDemoWorkflow(workflowId, input))}
-    />
+    <div className="m-4 rounded-2xl border border-danger/25 bg-danger/8 p-5 sm:m-5 sm:p-6" role="alert">
+      <span className="grid size-11 place-items-center rounded-xl bg-danger/12 text-danger">
+        <AlertTriangle aria-hidden="true" className="size-5" />
+      </span>
+      <h3 className="mt-5 text-base font-bold text-foreground">Live run could not finish</h3>
+      <p className="mt-2 text-sm leading-6 text-foreground-muted">{error.message}</p>
+      {error.requestId ? (
+        <details className="mt-4 text-xs text-foreground-soft">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold">Technical details</summary>
+          <p className="font-mono">Request ID: {error.requestId}</p>
+        </details>
+      ) : null}
+      <div className="mt-5 flex flex-wrap gap-2">
+        {error.retryable && onRetry ? (
+          <Button type="button" variant="secondary" onClick={onRetry}>
+            <RefreshCcw aria-hidden="true" className="size-4" /> Retry live run
+          </Button>
+        ) : null}
+        <p className="self-center text-xs text-foreground-soft">
+          Your form input is preserved. Demo Mode is available from Settings.
+        </p>
+      </div>
+    </div>
   );
 }
 
-function ResultContent({ result }: { result: DemoResult }) {
-  switch (result.workflowId) {
-    case "bug-triage":
-      return <BugResult output={result.output as BugTriageOutput} />;
-    case "meeting-actions":
-      return <MeetingResult output={result.output as MeetingActionsOutput} />;
-    case "status-update":
-      return <StatusResult output={result.output as StatusUpdateOutput} />;
-  }
-}
-
-export function WorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
+function WorkflowRunnerCore({ workflowId, mode }: { workflowId: WorkflowId; mode: AppMode }) {
   const [result, setResult] = useState<DemoResult | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [lastInput, setLastInput] = useState<WorkflowInput | null>(null);
   const reduceMotion = useReducedMotion();
+  const queryClient = useQueryClient();
+  const liveMutation = useMutation({
+    mutationFn: (input: WorkflowInput) => browserApi.createRun(workflowId, input),
+  });
+
+  async function execute(input: WorkflowInput) {
+    setLastInput(input);
+    setError(null);
+    if (mode === "demo") {
+      setResult(runDemoWorkflow(workflowId, input));
+      return;
+    }
+
+    setResult(null);
+    try {
+      const run = await liveMutation.mutateAsync(input);
+      const nextResult = runToResult(run);
+      if (!nextResult) {
+        throw new ApiError({
+          code: "INVALID_AI_OUTPUT",
+          message: "The live run finished without a valid structured result.",
+          requestId: null,
+          retryable: true,
+        }, 502);
+      }
+      setResult(nextResult);
+      await queryClient.invalidateQueries({ queryKey: ["runs"] });
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError
+          ? caught
+          : new ApiError({
+              code: "API_REQUEST_FAILED",
+              message: "The live run could not be completed.",
+              retryable: true,
+            }),
+      );
+    }
+  }
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.88fr)]">
-      <WorkflowForm workflowId={workflowId} onResult={setResult} />
+      <WorkflowForm workflowId={workflowId} mode={mode} onSubmit={execute} />
 
       <section
         aria-label="Workflow result"
@@ -74,18 +124,33 @@ export function WorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
       >
         <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
           <div>
-            <p className="text-xs font-bold tracking-[0.1em] text-accent uppercase">Result</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-bold tracking-[0.1em] text-accent uppercase">Result</p>
+              <Badge tone={mode === "live" ? "success" : "primary"}>{mode}</Badge>
+            </div>
             <h2 className="mt-1 text-lg font-bold tracking-[-0.02em] text-foreground">
               Structured artifact
             </h2>
             <p className="mt-1 text-sm leading-6 text-foreground-muted">
-              The same result surface is ready for live mode later.
+              {mode === "live"
+                ? "Authenticated results are validated by the API before display."
+                : "Deterministic output uses the same production result component."}
             </p>
           </div>
           {result ? <CopyResultButton text={resultToText(result)} /> : null}
         </div>
 
-        {result ? (
+        {liveMutation.isPending ? (
+          <div className="m-4 rounded-2xl border border-primary/20 bg-surface-accent p-5 sm:m-5 sm:p-6" role="status" aria-live="polite">
+            <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-primary motion-reduce:animate-none" />
+            <h3 className="mt-5 text-base font-bold text-foreground">Generating a structured result</h3>
+            <p className="mt-2 text-sm leading-6 text-foreground-muted">
+              Your validated input has been submitted. OpsPilot is waiting for the live API response.
+            </p>
+          </div>
+        ) : error ? (
+          <ErrorPanel error={error} onRetry={lastInput ? () => void execute(lastInput) : null} />
+        ) : result ? (
           <motion.div
             key={JSON.stringify(result.output)}
             initial={reduceMotion ? false : { opacity: 0, y: 14 }}
@@ -95,7 +160,7 @@ export function WorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
             role="status"
             aria-live="polite"
           >
-            <ResultContent result={result} />
+            <WorkflowResultContent result={result} />
           </motion.div>
         ) : (
           <div className="paper-grid m-4 min-h-80 rounded-2xl border border-dashed border-border-strong p-5 sm:m-5 sm:p-6">
@@ -104,7 +169,9 @@ export function WorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
             </div>
             <h3 className="mt-6 text-base font-bold text-foreground">Ready when your input is</h3>
             <p className="mt-2 max-w-sm text-sm leading-6 text-foreground-muted">
-              Complete the required fields or load the sample, then run the deterministic workflow. There is no provider request or artificial wait.
+              {mode === "live"
+                ? "Complete the required fields, then submit an authenticated run to the Django API."
+                : "Complete the required fields or load the sample, then run the deterministic workflow locally."}
             </p>
             <div className="mt-8 grid gap-2">
               {["Summary", "Structured sections", "Copy-ready output"].map((label, index) => (
@@ -115,11 +182,21 @@ export function WorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
               ))}
             </div>
             <p className="mt-6 flex items-center gap-2 text-xs text-foreground-soft">
-              <LockKeyhole aria-hidden="true" className="size-3.5" /> Input is not persisted automatically.
+              <LockKeyhole aria-hidden="true" className="size-3.5" />
+              {mode === "live" ? "Access tokens stay in the encrypted server session." : "Demo input is not persisted automatically."}
             </p>
           </div>
         )}
       </section>
     </div>
   );
+}
+
+export function ManagedWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
+  const { mode } = useAppMode();
+  return <WorkflowRunnerCore key={mode} workflowId={workflowId} mode={mode} />;
+}
+
+export function DemoWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
+  return <WorkflowRunnerCore workflowId={workflowId} mode="demo" />;
 }

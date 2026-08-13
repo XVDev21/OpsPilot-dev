@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { WorkflowRunner } from "@/features/workflows/workflow-runner";
+import { ManagedWorkflowRunner } from "@/features/workflows/workflow-runner";
 import { getWorkflow, isWorkflowId, workflows } from "@/features/workflows/registry";
 import { WorkflowIcon } from "@/features/workflows/workflow-icon";
 
@@ -47,7 +47,7 @@ export default async function WorkflowPage({ params }: WorkflowPageProps) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge>{workflow.category}</Badge>
-              <Badge tone="primary">Demo Mode</Badge>
+              <Badge tone="success">Live-ready</Badge>
             </div>
             <h1 className="mt-3 text-balance text-3xl font-bold tracking-[-0.04em] text-foreground">
               {workflow.title}
@@ -58,11 +58,11 @@ export default async function WorkflowPage({ params }: WorkflowPageProps) {
           </div>
         </div>
         <div className="rounded-xl border border-border bg-surface-soft px-4 py-3 text-xs leading-5 text-foreground-muted sm:max-w-xs">
-          Demo results are instant because they are generated locally from a deterministic schema, not a simulated AI call.
+          Live Mode uses your authenticated API session. Switch to Demo Mode in Settings whenever you need a deterministic fallback.
         </div>
       </div>
 
-      <WorkflowRunner workflowId={workflowId} />
+      <ManagedWorkflowRunner workflowId={workflowId} />
     </div>
   );
 }

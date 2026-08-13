@@ -16,24 +16,24 @@ import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Security",
-  description: "How OpsPilot Demo Mode works today and the planned security boundary for live workflows.",
+  description: "How OpsPilot protects authentication, workflow execution, and deterministic Demo Mode.",
 };
 
-const plannedControls = [
+const controls = [
   {
     icon: KeyRound,
     title: "WorkOS account security",
-    body: "Part 2 adds WorkOS AuthKit and Google Social Login. Access tokens will remain out of browser storage.",
+    body: "WorkOS AuthKit owns sign-in and the encrypted session. Access tokens are never persisted in localStorage or sessionStorage.",
   },
   {
     icon: ShieldCheck,
     title: "Verified API requests",
-    body: "Django will validate token signature and claims before accepting authenticated workflow requests.",
+    body: "The frontend attaches a WorkOS Bearer token only on the server-to-Django request. Django verification arrives with the backend phase.",
   },
   {
     icon: Database,
     title: "User-owned history",
-    body: "When history is introduced, saved runs will be scoped to the authenticated user and checked server-side.",
+    body: "The final history interface is account-scoped and API-ready. Django persistence and authorization remain the backend phase.",
   },
   {
     icon: BrainCircuit,
@@ -54,15 +54,15 @@ export default function SecurityPage() {
                 A clear boundary between demo and live processing.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-foreground-muted sm:text-lg">
-                OpsPilot’s security story is presented as it exists today. Planned controls are labeled as planned, with no implied certifications or finished infrastructure.
+                OpsPilot’s security story is presented as it exists today. Implemented frontend controls and pending backend controls are distinguished without implying certifications.
               </p>
             </div>
             <div className="paper-grid rounded-[1.75rem] border border-border bg-surface-raised p-6 shadow-[var(--shadow-md)]">
               <Laptop aria-hidden="true" className="size-8 text-primary" />
-              <p className="mt-8 text-xs font-bold tracking-wider text-primary uppercase">Frontend Part 1</p>
-              <h2 className="mt-2 text-xl font-bold text-foreground">Demo Mode stays deterministic</h2>
+              <p className="mt-8 text-xs font-bold tracking-wider text-primary uppercase">Frontend Part 2</p>
+              <h2 className="mt-2 text-xl font-bold text-foreground">Auth is live; Demo Mode stays deterministic</h2>
               <p className="mt-3 text-sm leading-7 text-foreground-muted">
-                Forms validate in the browser and render local fixtures through final schemas. No AI provider request is made, and inputs are not persisted automatically.
+                WorkOS protects the authenticated workspace. Demo Mode remains explicit, generates local schema-validated fixtures, and makes no AI provider request.
               </p>
             </div>
           </div>
@@ -72,16 +72,16 @@ export default function SecurityPage() {
           <div className="page-container">
             <div className="grid gap-6 md:grid-cols-[0.72fr_1.28fr]">
               <div>
-                <p className="section-kicker">Planned live architecture</p>
+                <p className="section-kicker">Layered architecture</p>
                 <h2 id="planned-heading" className="mt-3 text-balance text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">
                   Controls follow the data path.
                 </h2>
                 <p className="mt-4 text-sm leading-7 text-foreground-muted">
-                  These controls arrive with authentication and the Django service in later approved phases.
+                  Authentication and API boundaries now exist in the frontend. Django enforcement and provider processing remain intentionally pending.
                 </p>
               </div>
               <div className="grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-border bg-border sm:grid-cols-2">
-                {plannedControls.map((control) => (
+                {controls.map((control) => (
                   <article key={control.title} className="bg-surface-raised p-6">
                     <span className="grid size-10 place-items-center rounded-xl bg-surface-accent text-primary">
                       <control.icon aria-hidden="true" className="size-4.5" />
@@ -125,7 +125,7 @@ export default function SecurityPage() {
               </h2>
             </div>
             <Button asChild size="lg">
-              <Link href="/app/workflows">Open workflows <ArrowRight aria-hidden="true" className="size-4" /></Link>
+              <Link href="/demo/workflows">Open workflows <ArrowRight aria-hidden="true" className="size-4" /></Link>
             </Button>
           </div>
         </section>
