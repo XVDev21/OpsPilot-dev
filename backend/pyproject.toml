@@ -1,0 +1,43 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--cov=accounts",
+  "--cov=common",
+  "--cov=runs",
+  "--cov=workflows",
+  "--cov-report=term-missing",
+  "--cov-fail-under=90",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+  "*/migrations/*",
+  "*/admin.py",
+  "*/apps.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+extend-exclude = ["**/migrations/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["accounts", "common", "config", "runs", "workflows"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/models.py" = ["RUF012"]
+"*/schemas.py" = ["RUF012"]

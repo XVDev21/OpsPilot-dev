@@ -85,7 +85,13 @@ export function MeetingActionsForm({
                 <h3 className="text-sm font-semibold text-foreground">Participants</h3>
                 <p className="mt-1 text-xs text-foreground-muted">Optional; used only to support explicit owners.</p>
               </div>
-              <Button type="button" variant="quiet" size="sm" onClick={() => append({ value: "" })}>
+              <Button
+                type="button"
+                variant="quiet"
+                size="sm"
+                className="min-h-11"
+                onClick={() => append({ value: "" })}
+              >
                 <Plus aria-hidden="true" className="size-4" /> Add
               </Button>
             </div>

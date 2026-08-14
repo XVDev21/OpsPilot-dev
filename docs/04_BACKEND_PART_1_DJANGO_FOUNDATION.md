@@ -7,7 +7,7 @@ Create the production-oriented Python backend foundation after the frontend is a
 ## Stack
 
 - Python
-- Django
+- Django 5.2 LTS
 - Django Ninja
 - django-cors-headers
 - JWT/JWKS verification dependencies appropriate for current WorkOS guidance
@@ -15,6 +15,7 @@ Create the production-oriented Python backend foundation after the frontend is a
 - pytest-django
 - SQLite local
 - PostgreSQL production
+- Ruff and coverage gates
 
 ## Windows local setup
 
@@ -60,17 +61,19 @@ backend/
 ```text
 DJANGO_SECRET_KEY
 DJANGO_DEBUG
+DJANGO_ALLOWED_HOSTS
 DATABASE_URL
 FRONTEND_ORIGIN
 
 WORKOS_CLIENT_ID
 WORKOS_ISSUER
 WORKOS_JWKS_URL
-
-GEMINI_API_KEY
-GEMINI_MODEL
-AI_REQUEST_TIMEOUT_SECONDS
+WORKOS_JWKS_CACHE_SECONDS
 ```
+
+`WORKOS_JWKS_URL` may be omitted locally and derived as
+`https://api.workos.com/sso/jwks/<WORKOS_CLIENT_ID>`. Django does not need the WorkOS API key to
+validate an AuthKit access token. Gemini configuration begins in Backend Part 2.
 
 ## Production settings
 
@@ -94,7 +97,7 @@ For each protected API request:
 3. verify signature
 4. verify expiration
 5. verify issuer
-6. verify the intended application/client/audience claims according to current WorkOS token format
+6. require and compare the WorkOS `client_id` claim to `WORKOS_CLIENT_ID`
 7. extract `sub`
 8. map to local user
 9. attach user to request context
@@ -235,6 +238,20 @@ Required:
 - history serialization
 - delete ownership
 - error envelope
+- shared frontend/backend contract fixtures
+- OpenAPI Bearer security definition
+
+## Engineering gates
+
+```powershell
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe manage.py makemigrations --check
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe -m pytest
+```
+
+CI runs the backend suite on Windows and Linux. Production must also pass Django's deployment checks.
 
 ## Completion
 

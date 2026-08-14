@@ -24,8 +24,8 @@ shadcn/ui
 Motion
 React Hook Form
 Zod
-TanStack Query later
-WorkOS AuthKit later
+TanStack Query
+WorkOS AuthKit
 
 Backend:
 Python
@@ -35,6 +35,34 @@ Pydantic
 PostgreSQL production
 Gemini provider adapter
 ```
+
+The frontend and Django API are both implemented. Live Gemini execution remains intentionally
+deferred to Backend Part 2; Demo Mode stays deterministic and backend-independent.
+
+## Local development
+
+Frontend (PowerShell):
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Backend (PowerShell):
+
+```powershell
+cd backend
+py -3.14 -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements-dev.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python manage.py migrate
+.\.venv\Scripts\python manage.py runserver
+```
+
+See `backend/README.md` for configuration and `IMPLEMENTATION_STATUS.md` for verified delivery
+state. The production-readiness initiatives and release gates live in
+`docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`.
 
 ## Development environment
 
@@ -75,6 +103,8 @@ Read:
 8. `docs/05_BACKEND_PART_2_WORKFLOW_ENGINE.md`
 9. `docs/06_END_TO_END_AND_DEPLOYMENT.md`
 10. `docs/07_WINDOWS_TESTING_AND_SECURITY.md`
+11. `docs/08_OFFICIAL_REFERENCE_CHECKLIST.md`
+12. `docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`
 
 ## Scope discipline
 

@@ -100,19 +100,12 @@ Common rules:
 ```python
 class BugTriageOutput(BaseModel):
     summary: str
-    confirmed_facts: list[str]
-    evidence_gaps: list[str]
-    likely_category: Literal[
-        "configuration",
-        "source_data",
-        "calculation_or_logic",
-        "display_or_reporting",
-        "integration",
-        "insufficient_evidence",
-    ]
-    recommended_checks: list[str]
-    confidence: Literal["low", "medium", "high"]
-    human_review_required: Literal[True]
+    confirmedFacts: list[str]
+    evidenceGaps: list[str]
+    likelyCategory: str
+    recommendedChecks: list[str]
+    confidence: float  # 0.0 through 1.0
+    humanReviewNotice: str
 ```
 
 No guaranteed root-cause claims without evidence.
@@ -121,16 +114,16 @@ No guaranteed root-cause claims without evidence.
 
 ```python
 class ActionItem(BaseModel):
-    action: str
+    task: str
     owner: str | None
     deadline: str | None
 
 class MeetingActionsOutput(BaseModel):
     summary: str
     decisions: list[str]
-    action_items: list[ActionItem]
-    open_questions: list[str]
-    unresolved_items: list[str]
+    actionItems: list[ActionItem]
+    openQuestions: list[str]
+    unresolvedItems: list[str]
 ```
 
 Owner/deadline only when the notes support them.
@@ -140,10 +133,10 @@ Owner/deadline only when the notes support them.
 ```python
 class StatusUpdateOutput(BaseModel):
     completed: list[str]
-    in_progress: list[str]
-    blocked_or_waiting: list[str]
-    next_steps: list[str]
-    shareable_update: str
+    inProgress: list[str]
+    blocked: list[str]
+    nextSteps: list[str]
+    shareableUpdate: str
 ```
 
 Do not mark work completed if the notes say it is ongoing.
@@ -230,6 +223,12 @@ Test:
 - ownership
 
 Real provider smoke test is manual and excluded from CI.
+
+## Contract rule
+
+The camelCase response fields above are the versioned public API contract. The backend models,
+frontend Zod schemas, shared JSON fixtures in `contracts/v1/`, and generated OpenAPI document must
+change together. Internal Python services may use snake_case, but the API boundary must not drift.
 
 ## Completion
 

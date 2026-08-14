@@ -1,0 +1,23 @@
+{
+  "id": "21d9f642-97fc-42cf-9028-d51a5388a99b",
+  "workflow_id": "bug-triage",
+  "status": "completed",
+  "input_json": {
+    "title": "CSV export stalls"
+  },
+  "result_json": {
+    "summary": "Large CSV exports remain in processing.",
+    "confirmedFacts": ["Small exports complete."],
+    "evidenceGaps": ["No server-side logs were provided."],
+    "likelyCategory": "Scale-dependent export processing",
+    "recommendedChecks": ["Compare small and large export job logs."],
+    "confidence": 0.82,
+    "humanReviewNotice": "An engineer must validate this triage."
+  },
+  "error_code": null,
+  "provider": "gemini",
+  "model": "gemini-contract-fixture",
+  "duration_ms": 842,
+  "created_at": "2026-08-14T08:00:00Z",
+  "completed_at": "2026-08-14T08:00:01Z"
+}
