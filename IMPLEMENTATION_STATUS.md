@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Backend Part 2 complete
-**Status:** Ready for signed-in end-to-end integration and Render deployment
+**Current milestone:** Vercel + Render Free deployment preparation
+**Status:** Deployment configuration ready; cloud provisioning and signed-in smoke pending
 
 ## Milestones
 
@@ -14,6 +14,23 @@
 - [x] Backend Part 2 - provider-neutral workflow engine
 - [ ] End-to-end integration
 - [ ] Deployment
+
+## Vercel + Render Free deployment preparation
+
+- [x] Vercel owns the Next.js frontend; Render Blueprint no longer creates a duplicate frontend
+- [x] Render Free Django and PostgreSQL resources target Singapore
+- [x] PostgreSQL public ingress is disabled in the Blueprint
+- [x] Node 24 and Python 3.14.3 production runtimes are pinned
+- [x] free-tier migrations and expired-run purge run in the backend build command
+- [x] Render paid cron, Key Value, workers, and object storage are omitted because they are not
+  required by the current hobby workload
+- [x] Render Blueprint passes the current published JSON schema
+- [x] clean verification copy passes frontend lint, typecheck, 31 tests, and production build
+- [x] clean verification copy passes backend format, lint, migrations, system checks, and 50 tests at
+  94.97% coverage
+- [ ] Vercel production deployment and environment binding
+- [ ] Render API/database creation and environment binding
+- [ ] production WorkOS URLs and signed-in end-to-end browser smoke
 
 ## First-run verification
 
@@ -191,7 +208,9 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 - [x] authenticated execution-options and live workflow-run endpoints
 - [x] persisted frontend provider/tier preferences with unavailable-provider states
 - [x] token usage shown after successful live runs
-- [x] Render-first Next.js, Django, PostgreSQL, migration, and retention-cron Blueprint
+- [x] Vercel frontend plus Render Free Django/PostgreSQL Blueprint for the approved hobby deployment
+- [x] Singapore region and Node/Python production runtime pins
+- [x] free-tier migration/purge build fallback with paid retention cron explicitly deferred
 - [x] deployment and WorkOS callback runbook
 
 ## Backend Part 2 verification in this workspace

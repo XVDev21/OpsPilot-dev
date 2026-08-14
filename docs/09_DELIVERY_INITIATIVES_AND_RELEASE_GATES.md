@@ -104,7 +104,8 @@ Gate: staging passes the complete sign-in → workflow → history → deletion 
 
 1. Personal-only data ownership; organization workspaces are deferred.
 2. Workflow input/result history expires after 30 days during the trial.
-3. Render hosts Next.js, Django, PostgreSQL, and the retention cron through one Blueprint.
+3. Vercel Hobby hosts Next.js; Render Free hosts Django and PostgreSQL in Singapore. The paid
+   retention cron is deferred while expired runs remain hidden by API policy and are purged on deploy.
 4. Provider/model policy is server-owned and uses pinned stable model IDs.
 5. Gemini Efficient is the default low-cost/low-latency route; Balanced and Deep are optional.
 6. OpenAI remains an optional compatible provider using the same workflow contracts.
@@ -114,8 +115,8 @@ Gate: staging passes the complete sign-in → workflow → history → deletion 
 
 1. Complete the signed-in browser path from WorkOS through the Next.js BFF to Django and both
    providers, recording latency, token usage, and result-schema validity for golden inputs.
-2. Deploy the Render Blueprint, bind final service origins, register the production WorkOS callback,
-   and run the staging release journey before promoting production.
+2. Deploy the Vercel frontend and Render backend Blueprint, bind final service origins, register the
+   production WorkOS callback, and run the release journey before promoting production.
 3. Add privacy self-service for full account export and account erasure before paid launch.
 4. Add structured request/provider telemetry and alerting without logging workflow input or secrets.
 5. Establish per-tier budget envelopes and user-visible monthly usage before billing is introduced.
