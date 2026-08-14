@@ -1,13 +1,16 @@
 import { z } from "zod";
 
 export const meetingActionsInputSchema = z.object({
-  title: z.string().trim().min(3, "Give the meeting a clear title."),
+  title: z.string().trim().min(3, "Give the meeting a clear title.").max(200),
   notes: z
     .string()
     .trim()
-    .min(20, "Add enough notes to identify decisions and follow-up work."),
-  participants: z.array(z.object({ value: z.string().trim().min(2, "Enter a name or remove this row.") })),
-  date: z.string().trim().optional(),
+    .min(20, "Add enough notes to identify decisions and follow-up work.")
+    .max(12000, "Keep meeting notes under 12,000 characters."),
+  participants: z
+    .array(z.object({ value: z.string().trim().min(2, "Enter a name or remove this row.").max(160) }))
+    .max(50),
+  date: z.string().trim().max(50).optional(),
 });
 
 export const meetingActionsOutputSchema = z.object({

@@ -14,6 +14,7 @@ class WorkflowRunSchema(ModelSchema):
     result_json: dict[str, Any] | None
     created_at: datetime
     completed_at: datetime | None
+    expires_at: datetime | None
 
     class Meta:
         model = WorkflowRun
@@ -26,12 +27,27 @@ class WorkflowRunSchema(ModelSchema):
             "error_code",
             "provider",
             "model",
+            "intelligence",
+            "prompt_version",
+            "input_tokens",
+            "output_tokens",
             "duration_ms",
             "created_at",
             "completed_at",
+            "expires_at",
         ]
 
 
 class RunListResponse(Schema):
     items: list[WorkflowRunSchema]
     next_cursor: str | None = None
+
+
+class RunOptions(Schema):
+    provider: Literal["gemini", "openai"] | None = None
+    intelligence: Literal["fast", "balanced", "high"] | None = None
+
+
+class CreateWorkflowRunRequest(Schema):
+    input: dict[str, Any]
+    options: RunOptions | None = None

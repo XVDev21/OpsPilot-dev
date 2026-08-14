@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserApi } from "@/lib/api/browser-client";
+import workflowRunFixture from "../../contracts/v1/workflow-run.json";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -40,5 +41,32 @@ describe("browser API client", () => {
       status: 503,
       retryable: true,
     });
+  });
+
+  it("sends only validated provider and intelligence identifiers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      headers: new Headers(),
+      json: async () => workflowRunFixture,
+    } satisfies Partial<Response>);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await browserApi.createRun(
+      "bug-triage",
+      { title: "CSV export stalls" },
+      { provider: "gemini", intelligence: "fast" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backend/workflows/bug-triage/runs",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          input: { title: "CSV export stalls" },
+          options: { provider: "gemini", intelligence: "fast" },
+        }),
+      }),
+    );
   });
 });

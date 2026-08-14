@@ -3,6 +3,8 @@ PyJWT[crypto]==2.13.0
 dj-database-url==3.1.2
 django-cors-headers==4.9.0
 django-ninja==1.6.2
+google-genai==2.18.1
 gunicorn==26.0.0
+openai==3.0.0
 psycopg[binary]==3.3.4
 python-dotenv==1.2.2

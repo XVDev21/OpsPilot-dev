@@ -1,25 +1,28 @@
 import { z } from "zod";
 
 export const bugTriageInputSchema = z.object({
-  title: z.string().trim().min(3, "Give the issue a short, specific title."),
-  affectedArea: z.string().trim().min(2, "Name the affected product area."),
+  title: z.string().trim().min(3, "Give the issue a short, specific title.").max(200),
+  affectedArea: z.string().trim().min(2, "Name the affected product area.").max(160),
   observedBehavior: z
     .string()
     .trim()
-    .min(12, "Describe what happened with a little more detail."),
+    .min(12, "Describe what happened with a little more detail.")
+    .max(3000, "Keep the observed behavior under 3,000 characters."),
   expectedBehavior: z
     .string()
     .trim()
-    .min(12, "Describe what should have happened."),
+    .min(12, "Describe what should have happened.")
+    .max(3000, "Keep the expected behavior under 3,000 characters."),
   evidence: z
     .array(
       z.object({
-        value: z.string().trim().min(3, "Add a useful evidence point or remove this row."),
+        value: z.string().trim().min(3, "Add a useful evidence point or remove this row.").max(1000),
       }),
     )
-    .min(1, "Add at least one known evidence point."),
-  settings: z.string().trim().optional(),
-  constraints: z.string().trim().optional(),
+    .min(1, "Add at least one known evidence point.")
+    .max(12, "Keep evidence to the 12 most useful points."),
+  settings: z.string().trim().max(2000).optional(),
+  constraints: z.string().trim().max(2000).optional(),
 });
 
 export const bugTriageOutputSchema = z.object({

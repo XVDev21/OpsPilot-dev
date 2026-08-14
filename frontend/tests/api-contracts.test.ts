@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import currentUserFixture from "../../contracts/v1/current-user.json";
+import executionOptionsFixture from "../../contracts/v1/execution-options.json";
 import runListFixture from "../../contracts/v1/run-list.json";
 import workflowRunFixture from "../../contracts/v1/workflow-run.json";
 import { runToResult } from "@/features/workflows/run-adapter";
@@ -7,6 +8,7 @@ import { ApiError } from "@/lib/api/errors";
 import {
   backendRunListSchema,
   backendUserSchema,
+  executionOptionsSchema,
   parseApiResponse,
   runListResponseSchema,
   workflowRunSchema,
@@ -27,6 +29,14 @@ describe("live API contracts", () => {
   it("accepts the shared paginated history fixture", () => {
     expect(runListResponseSchema.parse(runListFixture)).toHaveProperty("items");
     expect(backendRunListSchema.parse(runListFixture)).toHaveProperty("items");
+  });
+
+  it("accepts server-owned provider and intelligence options", () => {
+    expect(executionOptionsSchema.parse(executionOptionsFixture)).toMatchObject({
+      defaultProvider: "gemini",
+      defaultIntelligence: "fast",
+      retentionDays: 30,
+    });
   });
 
   it("turns contract drift into a retryable API error", () => {

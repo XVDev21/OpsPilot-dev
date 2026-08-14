@@ -1,11 +1,13 @@
 import { ApiError, type ApiErrorPayload } from "@/lib/api/errors";
 import {
   backendUserSchema,
+  executionOptionsSchema,
   parseApiResponse,
   runListResponseSchema,
   workflowRunSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
+import type { AIProvider, IntelligenceLevel } from "@/lib/api/types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
@@ -50,18 +52,28 @@ export const browserApi = {
   async listRuns() {
     return parseApiResponse(runListResponseSchema, await request<unknown>("/api/backend/runs"));
   },
+  async executionOptions() {
+    return parseApiResponse(
+      executionOptionsSchema,
+      await request<unknown>("/api/backend/execution-options"),
+    );
+  },
   async getRun(runId: string) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/api/backend/runs/${encodeURIComponent(runId)}`),
     );
   },
-  async createRun(workflowId: WorkflowId, input: unknown) {
+  async createRun(
+    workflowId: WorkflowId,
+    input: unknown,
+    options: { provider: AIProvider; intelligence: IntelligenceLevel },
+  ) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/api/backend/workflows/${workflowId}/runs`, {
         method: "POST",
-        body: JSON.stringify(input),
+        body: JSON.stringify({ input, options }),
       }),
     );
   },

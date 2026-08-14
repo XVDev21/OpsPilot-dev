@@ -17,6 +17,31 @@ export const backendUserSchema = z.object({
 });
 
 export const runStatusSchema = z.enum(["pending", "completed", "failed"]);
+export const aiProviderSchema = z.enum(["gemini", "openai"]);
+export const intelligenceLevelSchema = z.enum(["fast", "balanced", "high"]);
+
+export const runOptionsSchema = z.object({
+  provider: aiProviderSchema,
+  intelligence: intelligenceLevelSchema,
+});
+
+export const createRunRequestSchema = z.object({
+  input: z.unknown(),
+  options: runOptionsSchema,
+});
+
+export const executionOptionsSchema = z.object({
+  providers: z.array(z.object({ id: aiProviderSchema, label: z.string(), enabled: z.boolean() })),
+  intelligenceLevels: z.array(z.object({
+    id: intelligenceLevelSchema,
+    label: z.string(),
+    description: z.string(),
+    relativeUsage: z.enum(["lowest", "medium", "highest"]),
+  })),
+  defaultProvider: aiProviderSchema,
+  defaultIntelligence: intelligenceLevelSchema,
+  retentionDays: z.number().int().positive(),
+});
 
 export const workflowRunSchema = z.object({
   id: z.string().min(1),
@@ -27,9 +52,14 @@ export const workflowRunSchema = z.object({
   error_code: z.string().nullable(),
   provider: z.string().nullable(),
   model: z.string().nullable(),
+  intelligence: intelligenceLevelSchema.nullable(),
+  prompt_version: z.string().nullable(),
+  input_tokens: z.number().int().nonnegative().nullable(),
+  output_tokens: z.number().int().nonnegative().nullable(),
   duration_ms: z.number().nonnegative().nullable(),
   created_at: z.string().min(1),
   completed_at: z.string().nullable(),
+  expires_at: z.string().nullable(),
 });
 
 export const runListResponseSchema = z.object({

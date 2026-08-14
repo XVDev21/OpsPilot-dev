@@ -1,0 +1,91 @@
+databases:
+  - name: opspilot-db
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: opspilot-web
+    runtime: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_API_KEY
+        sync: false
+      - key: WORKOS_COOKIE_PASSWORD
+        generateValue: true
+      - key: NEXT_PUBLIC_WORKOS_REDIRECT_URI
+        sync: false
+
+  - type: web
+    name: opspilot-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: opspilot-db
+          property: connectionString
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_ISSUER
+        value: https://api.workos.com
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: AI_DEFAULT_PROVIDER
+        value: gemini
+      - key: AI_DEFAULT_INTELLIGENCE
+        value: fast
+      - key: AI_REQUEST_TIMEOUT_SECONDS
+        value: "30"
+      - key: AI_RATE_LIMIT_PER_MINUTE
+        value: "5"
+      - key: AI_RATE_LIMIT_PER_DAY
+        value: "30"
+      - key: WORKFLOW_RETENTION_DAYS
+        value: "30"
+
+  - type: cron
+    name: opspilot-retention
+    runtime: python
+    rootDir: backend
+    plan: starter
+    schedule: "17 3 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py purge_expired_runs
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.maintenance
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: opspilot-db
+          property: connectionString

@@ -3,23 +3,31 @@ from typing import Annotated, Literal
 from ninja import Schema
 from pydantic import Field, StringConstraints
 
-ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2)]
-MeaningfulText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=12)]
-LongText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20)]
+ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=160)]
+MeaningfulText = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=12, max_length=3_000)
+]
+LongText = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=20, max_length=12_000)
+]
 
 
 class EvidenceItem(Schema):
-    value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+    value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=1_000)]
 
 
 class BugTriageInput(Schema):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
     affectedArea: ShortText
     observedBehavior: MeaningfulText
     expectedBehavior: MeaningfulText
-    evidence: list[EvidenceItem] = Field(min_length=1)
-    settings: str | None = None
-    constraints: str | None = None
+    evidence: list[EvidenceItem] = Field(min_length=1, max_length=12)
+    settings: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2_000)] | None = (
+        None
+    )
+    constraints: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=2_000)] | None
+    ) = None
 
 
 class BugTriageOutput(Schema):
@@ -37,10 +45,10 @@ class Participant(Schema):
 
 
 class MeetingActionsInput(Schema):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
     notes: LongText
-    participants: list[Participant]
-    date: str | None = None
+    participants: list[Participant] = Field(max_length=50)
+    date: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = None
 
 
 class ActionItem(Schema):
@@ -79,3 +87,24 @@ class WorkflowMetadata(Schema):
     description: str
     benefit: str
     promptVersion: str
+
+
+class ProviderOption(Schema):
+    id: Literal["gemini", "openai"]
+    label: str
+    enabled: bool
+
+
+class IntelligenceOption(Schema):
+    id: Literal["fast", "balanced", "high"]
+    label: str
+    description: str
+    relativeUsage: Literal["lowest", "medium", "highest"]
+
+
+class ExecutionOptions(Schema):
+    providers: list[ProviderOption]
+    intelligenceLevels: list[IntelligenceOption]
+    defaultProvider: Literal["gemini", "openai"]
+    defaultIntelligence: Literal["fast", "balanced", "high"]
+    retentionDays: int

@@ -16,7 +16,7 @@ Browser
 → versioned Django Ninja API
 → application services and domain models
 → PostgreSQL
-→ AI provider adapter (Backend Part 2)
+→ provider-neutral AI adapter (Gemini default, OpenAI compatible)
 ```
 
 Trust boundaries:
@@ -24,7 +24,7 @@ Trust boundaries:
 - WorkOS owns authentication and session issuance.
 - Next.js owns session cookies and obtains access tokens only on the server.
 - Django verifies every Bearer token and owns authorization, persistence, and workflow policy.
-- Gemini receives only validated, bounded workflow input through a backend-only adapter.
+- The selected AI provider receives only validated, bounded workflow input through a backend-only adapter.
 - PostgreSQL is the source of truth for user-owned workflow runs.
 
 Do not split this into microservices until measured scaling or team-ownership pressure justifies the
@@ -72,7 +72,7 @@ Gate: mocked CI evaluation passes and a manual real-provider smoke test is recor
 
 ## Initiative 5 — Privacy, abuse, and cost controls
 
-- Define retention for workflow inputs and results before production.
+- Keep trial workflow inputs and results for 30 days, then purge them permanently.
 - Enforce per-field and total request-size limits.
 - Add authenticated per-user throttling before enabling live Gemini broadly.
 - Never log raw access tokens, provider keys, hidden prompts, or complete user input.
@@ -100,13 +100,23 @@ Gate: protected `main` accepts only reviewed changes with green required checks.
 
 Gate: staging passes the complete sign-in → workflow → history → deletion → sign-out journey.
 
-## Product decisions to settle
+## Product decisions resolved for the first production release
 
-1. Personal-only data ownership versus WorkOS organization workspaces.
-2. Workflow input/result retention period.
-3. Render-only topology versus Vercel frontend plus Render API/PostgreSQL.
-4. Production domain and deployment region.
-5. Acceptable Gemini cost, latency, and per-user request limits.
+1. Personal-only data ownership; organization workspaces are deferred.
+2. Workflow input/result history expires after 30 days during the trial.
+3. Render hosts Next.js, Django, PostgreSQL, and the retention cron through one Blueprint.
+4. Provider/model policy is server-owned and uses pinned stable model IDs.
+5. Gemini Efficient is the default low-cost/low-latency route; Balanced and Deep are optional.
+6. OpenAI remains an optional compatible provider using the same workflow contracts.
+7. Initial live limits are five runs per minute and 30 per rolling day per account.
 
-Current implementation defaults to personal ownership, user-managed deletion, Render topology, and
-conservative synchronous execution until these decisions are finalized.
+## Next initiatives after Backend Part 2
+
+1. Complete the signed-in browser path from WorkOS through the Next.js BFF to Django and both
+   providers, recording latency, token usage, and result-schema validity for golden inputs.
+2. Deploy the Render Blueprint, bind final service origins, register the production WorkOS callback,
+   and run the staging release journey before promoting production.
+3. Add privacy self-service for full account export and account erasure before paid launch.
+4. Add structured request/provider telemetry and alerting without logging workflow input or secrets.
+5. Establish per-tier budget envelopes and user-visible monthly usage before billing is introduced.
+6. Add a durable queue only if measured synchronous timeout or concurrency data requires it.

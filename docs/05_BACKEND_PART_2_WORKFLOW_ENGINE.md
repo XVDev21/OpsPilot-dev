@@ -1,4 +1,4 @@
-# 05 — Backend Part 2: Gemini Workflow Engine
+# 05 — Backend Part 2: Provider-Neutral Workflow Engine
 
 ## Objective
 
@@ -44,13 +44,23 @@ class AIProvider(Protocol):
         ...
 ```
 
-Implement:
+Implement `GeminiProvider` and `OpenAIProvider` behind the same protocol. Gemini is the default;
+OpenAI is a compatible user-selectable provider. The workflow service must not branch on SDK details.
 
-```text
-GeminiProvider
+The public request is:
+
+```json
+{
+  "input": {},
+  "options": {
+    "provider": "gemini",
+    "intelligence": "fast"
+  }
+}
 ```
 
-Future OpenAI adapter should not require workflow-service redesign.
+The browser never submits an arbitrary model ID. Server configuration maps `fast`, `balanced`, and
+`high` to pinned models and output-token ceilings.
 
 ## Gemini
 
@@ -60,7 +70,6 @@ Backend-only:
 
 ```text
 GEMINI_API_KEY
-GEMINI_MODEL
 AI_REQUEST_TIMEOUT_SECONDS
 ```
 
@@ -71,6 +80,13 @@ Requirements:
 - safe provider errors
 - no secret logging
 - model response always server validated
+
+## OpenAI compatibility
+
+OpenAI uses the current official Responses API structured-output path. `OPENAI_API_KEY` is optional;
+when absent, the execution-options endpoint reports OpenAI as unavailable. Provider authentication,
+rate limit, timeout, connection, status, and malformed-output failures normalize to the same public
+error contract as Gemini.
 
 ## Prompt architecture
 
@@ -205,6 +221,14 @@ Minimum:
 - no calls on keystrokes
 - no silent infinite retries
 - simple user throttling only if straightforward
+
+Production defaults:
+
+- personal account ownership
+- five reservations per minute and 30 per rolling day
+- 30-day workflow input/result retention
+- no provider call until authenticated input validation and the quota reservation succeed
+- daily permanent purge through the deployment scheduler
 
 ## Tests
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from accounts.schemas import AppUserSchema
 from common.schemas import ApiErrorEnvelope
 from runs.schemas import RunListResponse, WorkflowRunSchema
+from workflows.schemas import ExecutionOptions
 
 CONTRACTS_DIR = Path(__file__).resolve().parents[2] / "contracts" / "v1"
 
@@ -17,3 +18,4 @@ def test_shared_contract_fixtures_validate_against_backend_schemas() -> None:
     AppUserSchema.model_validate(fixture("current-user.json"))
     WorkflowRunSchema.model_validate(fixture("workflow-run.json"))
     RunListResponse.model_validate(fixture("run-list.json"))
+    ExecutionOptions.model_validate(fixture("execution-options.json"))

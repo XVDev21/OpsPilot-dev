@@ -1,0 +1,29 @@
+{
+  "providers": [
+    { "id": "gemini", "label": "Gemini", "enabled": true },
+    { "id": "openai", "label": "OpenAI", "enabled": true }
+  ],
+  "intelligenceLevels": [
+    {
+      "id": "fast",
+      "label": "Efficient",
+      "description": "Lowest latency and token use for routine workflow jobs.",
+      "relativeUsage": "lowest"
+    },
+    {
+      "id": "balanced",
+      "label": "Balanced",
+      "description": "More reasoning depth with moderate token use.",
+      "relativeUsage": "medium"
+    },
+    {
+      "id": "high",
+      "label": "Deep",
+      "description": "Highest reasoning depth, token use, and expected latency.",
+      "relativeUsage": "highest"
+    }
+  ],
+  "defaultProvider": "gemini",
+  "defaultIntelligence": "fast",
+  "retentionDays": 30
+}

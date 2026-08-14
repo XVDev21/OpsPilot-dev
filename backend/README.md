@@ -14,8 +14,9 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
-Set the real `WORKOS_CLIENT_ID` in `backend/.env`. The API derives the WorkOS JWKS URL
-from that client ID and does not need a WorkOS API key to validate access tokens.
+Set the real `WORKOS_CLIENT_ID`, `GEMINI_API_KEY`, and optional `OPENAI_API_KEY` in
+`backend/.env`. The API derives the WorkOS JWKS URL from the client ID and does not need a WorkOS
+API key to validate access tokens.
 
 ## Quality gates
 
@@ -32,4 +33,16 @@ from that client ID and does not need a WorkOS API key to validate access tokens
 - Django accepts short-lived WorkOS access tokens as Bearer credentials.
 - API routes use `/api/v1` and return a stable error envelope with request IDs.
 - SQLite is local-only; production uses PostgreSQL through `DATABASE_URL`.
-- Gemini is intentionally absent from Backend Part 1.
+- Gemini is the default low-cost provider; OpenAI is an optional compatible route.
+- Browser requests select only `fast`, `balanced`, or `high`; exact model policy remains server-side.
+- Trial workflow input and result history expires after 30 days by default.
+
+## Retention
+
+Expired runs are excluded from account history immediately. Purge them permanently with:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py purge_expired_runs
+```
+
+The Render Blueprint schedules this command daily in production.

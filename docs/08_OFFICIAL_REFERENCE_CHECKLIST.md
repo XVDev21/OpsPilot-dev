@@ -50,6 +50,15 @@ Use current official Google GenAI Python documentation for:
 - model ID
 - timeout/error handling
 
+## OpenAI API
+
+Use current official OpenAI Python SDK documentation for:
+
+- Responses API structured outputs
+- supported model IDs
+- timeout, authentication, rate-limit, and connection errors
+- disabling response storage for workflow execution
+
 ## Render
 
 Use current official Render documentation for:

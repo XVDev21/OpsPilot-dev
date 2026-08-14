@@ -12,9 +12,14 @@ function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
     error_code: null,
     provider: null,
     model: null,
+    intelligence: null,
+    prompt_version: null,
+    input_tokens: null,
+    output_tokens: null,
     duration_ms: null,
     created_at: "2026-08-13T02:30:00Z",
     completed_at: "2026-08-13T02:30:01Z",
+    expires_at: null,
     ...overrides,
   };
 }
