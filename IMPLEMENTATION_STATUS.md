@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Vercel + Render Free deployment preparation
-**Status:** Deployment configuration ready; cloud provisioning and signed-in smoke pending
+**Current milestone:** Vercel + Render Free production deployment
+**Status:** Frontend and API live; WorkOS dashboard callback confirmation and signed-in smoke pending
 
 ## Milestones
 
@@ -13,13 +13,13 @@
 - [x] Backend Part 1 - Django foundation
 - [x] Backend Part 2 - provider-neutral workflow engine
 - [ ] End-to-end integration
-- [ ] Deployment
+- [x] Deployment
 
-## Vercel + Render Free deployment preparation
+## Vercel + Render Free production deployment
 
 - [x] Vercel owns the Next.js frontend; Render Blueprint no longer creates a duplicate frontend
 - [x] Render Free Django and PostgreSQL resources target Singapore
-- [x] PostgreSQL public ingress is disabled in the Blueprint
+- [x] PostgreSQL public ingress is disabled in the Blueprint and deployed database
 - [x] Node 24 and Python 3.14.3 production runtimes are pinned
 - [x] free-tier migrations and expired-run purge run in the backend build command
 - [x] Render paid cron, Key Value, workers, and object storage are omitted because they are not
@@ -28,9 +28,20 @@
 - [x] clean verification copy passes frontend lint, typecheck, 31 tests, and production build
 - [x] clean verification copy passes backend format, lint, migrations, system checks, and 50 tests at
   94.97% coverage
-- [ ] Vercel production deployment and environment binding
-- [ ] Render API/database creation and environment binding
-- [ ] production WorkOS URLs and signed-in end-to-end browser smoke
+- [x] Vercel production deployment and environment binding at `https://opspilot-dev.vercel.app`
+- [x] Render Free API deployment and environment binding at
+  `https://opspilot-api-dhk7.onrender.com`
+- [x] Render Free PostgreSQL provisioned in Singapore with external ingress disabled
+- [x] production API health, allowed CORS origin, unauthenticated rejection, and clean runtime logs
+- [x] production browser smoke across desktop/mobile, light/dark, reduced motion, and all three Demo
+  Mode workflows
+- [x] production WCAG A/AA audit reports zero violations
+- [ ] WorkOS dashboard callback allowlist and signed-in end-to-end browser smoke
+
+Free-tier operating note: the deployed Postgres instance expires on September 13, 2026 unless it is
+upgraded or replaced, the web service can cold-start after inactivity, and strict scheduled physical
+purging remains deferred because Render cron jobs are paid. Expired runs are still hidden immediately
+by the application and purged on deploy.
 
 ## First-run verification
 
@@ -230,6 +241,11 @@ frontend build          PASS - Next.js 16.3, 26 routes/assets
 Render schema           PASS - current published Render JSON schema
 browser verification    PASS - settings desktop/mobile, light/dark, reduced motion, persistence,
                           zero overflow, 44px targets, zero WCAG A/AA/2.2 violations, AuthKit redirect
+Vercel production       PASS - READY, canonical alias returns 200, no runtime errors
+Render production       PASS - live deploy, health 200, frontend-only CORS, protected route 401
+production Demo Mode    PASS - all three workflows produce structured results in the deployed app
+production visual       PASS - 1440x900 and 390x844 in light/dark, reduced motion active
+production WCAG         PASS - zero automated WCAG A/AA violations on the deployed landing page
 ```
 
 Frontend Node gates ran from a clean verification copy on local `C:` storage. The mapped `X:` drive
