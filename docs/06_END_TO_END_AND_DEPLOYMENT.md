@@ -8,7 +8,7 @@ sequenceDiagram
     participant F as Next.js
     participant W as WorkOS
     participant D as Django
-    participant G as Gemini
+    participant P as Selected AI provider
 
     U->>F: Open workflow
     F->>W: AuthKit session
@@ -16,8 +16,8 @@ sequenceDiagram
     U->>F: Submit form
     F->>D: POST /api/v1/workflows/{id}/runs + Bearer JWT
     D->>D: Verify JWT and validate input
-    D->>G: Structured generation
-    G-->>D: Structured response
+    D->>P: Structured generation
+    P-->>D: Structured response + token usage
     D->>D: Pydantic validation + persistence
     D-->>F: WorkflowRun
     F-->>U: Structured result
@@ -49,8 +49,13 @@ WORKOS_ISSUER=
 WORKOS_JWKS_URL=
 
 GEMINI_API_KEY=
-GEMINI_MODEL=
+OPENAI_API_KEY=
+AI_DEFAULT_PROVIDER=gemini
+AI_DEFAULT_INTELLIGENCE=fast
 AI_REQUEST_TIMEOUT_SECONDS=
+AI_RATE_LIMIT_PER_MINUTE=5
+AI_RATE_LIMIT_PER_DAY=30
+WORKFLOW_RETENTION_DAYS=30
 ```
 
 ## Stable API base
@@ -83,6 +88,7 @@ GET /api/v1/me
 
 ```text
 GET /api/v1/workflows
+GET /api/v1/execution-options
 POST /api/v1/workflows/{workflowId}/runs
 ```
 
@@ -165,6 +171,10 @@ Database:
 Render PostgreSQL
 ```
 
+The repository-root `render.yaml` is the canonical Blueprint. It also provisions a daily cron service
+that permanently purges expired workflow runs. See `docs/10_RENDER_DEPLOYMENT_RUNBOOK.md` for the
+first-deploy variable and callback sequence.
+
 Frontend and backend deploy independently.
 
 ## Frontend Render behavior
@@ -200,7 +210,7 @@ Environment includes:
 - DATABASE_URL
 - frontend origin
 - WorkOS validation settings
-- Gemini secrets
+- Gemini and optional OpenAI secrets
 
 ## Optional Vercel frontend
 

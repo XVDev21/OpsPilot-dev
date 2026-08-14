@@ -2,6 +2,7 @@ import { djangoApi } from "@/lib/api/client";
 import { ApiError, apiErrorResponse } from "@/lib/api/errors";
 import { requireAccessToken } from "@/lib/api/route-auth";
 import { getWorkflow, isWorkflowId } from "@/features/workflows/registry";
+import { createRunRequestSchema } from "@/lib/api/schemas";
 
 interface WorkflowRunRouteProps {
   params: Promise<{ workflowId: string }>;
@@ -18,9 +19,9 @@ export async function POST(request: Request, { params }: WorkflowRunRouteProps) 
       }, 404);
     }
 
-    let input: unknown;
+    let body: unknown;
     try {
-      input = await request.json();
+      body = await request.json();
     } catch {
       throw new ApiError({
         code: "VALIDATION_ERROR",
@@ -29,7 +30,16 @@ export async function POST(request: Request, { params }: WorkflowRunRouteProps) 
       }, 400);
     }
 
-    const validatedInput = getWorkflow(workflowId).inputSchema.safeParse(input);
+    const validatedRequest = createRunRequestSchema.safeParse(body);
+    if (!validatedRequest.success) {
+      throw new ApiError({
+        code: "VALIDATION_ERROR",
+        message: "Choose a supported provider and intelligence level.",
+        retryable: false,
+      }, 422);
+    }
+
+    const validatedInput = getWorkflow(workflowId).inputSchema.safeParse(validatedRequest.data.input);
     if (!validatedInput.success) {
       const fieldErrors = validatedInput.error.issues.reduce<Record<string, string[]>>(
         (errors, issue) => {
@@ -51,7 +61,12 @@ export async function POST(request: Request, { params }: WorkflowRunRouteProps) 
     }
 
     return Response.json(
-      await djangoApi.createRun(accessToken, workflowId, validatedInput.data),
+      await djangoApi.createRun(
+        accessToken,
+        workflowId,
+        validatedInput.data,
+        validatedRequest.data.options,
+      ),
       { status: 201 },
     );
   } catch (error) {

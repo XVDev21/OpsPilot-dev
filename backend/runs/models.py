@@ -21,7 +21,10 @@ class WorkflowRun(models.Model):
     error_code = models.CharField(max_length=64, blank=True, null=True)
     provider = models.CharField(max_length=64, blank=True, null=True)
     model = models.CharField(max_length=128, blank=True, null=True)
+    intelligence = models.CharField(max_length=16, blank=True, null=True)
     prompt_version = models.CharField(max_length=32, blank=True, null=True)
+    input_tokens = models.PositiveIntegerField(blank=True, null=True)
+    output_tokens = models.PositiveIntegerField(blank=True, null=True)
     duration_ms = models.PositiveIntegerField(
         blank=True,
         null=True,
@@ -29,6 +32,7 @@ class WorkflowRun(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True, db_index=True)
 
     class Meta:
         db_table = "workflow_runs"

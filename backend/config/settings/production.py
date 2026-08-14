@@ -21,6 +21,7 @@ CORS_ALLOWED_ORIGINS = [FRONTEND_ORIGIN]
 CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN]
 WORKOS_CLIENT_ID = required_env("WORKOS_CLIENT_ID")
 WORKOS_ISSUER = required_env("WORKOS_ISSUER").rstrip("/")
+GEMINI_API_KEY = required_env("GEMINI_API_KEY")
 DATABASES = {
     "default": dj_database_url.parse(
         required_env("DATABASE_URL"),

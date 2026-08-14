@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Backend Part 1 complete
-**Status:** Ready to begin Backend Part 2 after product-policy decisions
+**Current milestone:** Backend Part 2 complete
+**Status:** Ready for signed-in end-to-end integration and Render deployment
 
 ## Milestones
 
@@ -11,7 +11,7 @@
 - [x] Frontend Part 1 - visible product core
 - [x] Frontend Part 2 - WorkOS + live API frontend
 - [x] Backend Part 1 - Django foundation
-- [ ] Backend Part 2 - Gemini workflow engine
+- [x] Backend Part 2 - provider-neutral workflow engine
 - [ ] End-to-end integration
 - [ ] Deployment
 
@@ -23,8 +23,8 @@
 - [x] frontend dev server works in Windows PowerShell
 - [x] lint passes
 - [x] typecheck passes
-- [x] tests pass (10 files, 28 tests)
-- [x] production build passes (25 generated routes/assets)
+- [x] tests pass (11 files, 31 tests)
+- [x] production build passes (26 generated routes/assets)
 - [x] 1440x900 desktop checked
 - [x] 1024x768 desktop/tablet checked
 - [x] 768x1024 tablet checked
@@ -39,6 +39,9 @@
 - [x] Django 5.2 LTS service runs in Windows PowerShell
 - [x] backend Ruff, migrations, system, deployment, test, coverage, and dependency checks pass
 - [x] frontend/backend shared v1 contract fixtures pass
+- [x] Gemini real structured-output smoke passes on the default Efficient tier
+- [x] OpenAI reaches the live API and safely normalizes unavailable-quota responses
+- [x] Render Blueprint passes Render's published JSON schema
 
 ## Frontend Part 1 visible surfaces
 
@@ -159,20 +162,57 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 
 ## Intentional deferrals
 
-- Gemini or any live AI provider call
-- live workflow-run creation endpoint
 - organization/workspace authorization
-- scheduled retention deletion and production throttling
-- Production domain and deployment configuration
+- paid billing and monthly usage envelopes
+- full account export and account erasure self-service
+- production service creation, final domains, and DNS
+- durable background queues unless measured synchronous load requires them
 
 ## Next-phase prerequisites
 
-- Rotate the WorkOS API key exposed in chat. Backend token validation needs only the public client ID;
-  keep any replacement API key server-only in the Next.js/deployment secret store.
-- Remove `GEMINI_API_KEY` from `frontend/.env.local`; Backend Part 2 will read it only from
-  `backend/.env` locally and the backend deployment secret store in production.
-- Confirm personal ownership versus WorkOS organization workspaces.
-- Choose workflow input/result retention and deletion policy.
-- Choose deployment topology, production domain/region, and acceptable Gemini cost/latency limits.
-- Sign in once during the Backend Part 2 browser pass so the real WorkOS token -> Next.js BFF ->
-  Django identity path can be smoke-tested end to end without sharing credentials.
+- Add OpenAI project billing or quota before the optional OpenAI end-to-end smoke; Gemini is ready.
+- Apply `render.yaml`, then provide the assigned frontend/backend hostnames for the final origin values.
+- Add `https://<frontend-host>/auth/callback` to the WorkOS production redirect allowlist.
+- Sign in once during the deployment pass so WorkOS -> Next.js BFF -> Django -> provider -> history can
+  be verified end to end without sharing credentials.
+
+## Backend Part 2 implementation
+
+- [x] provider-neutral synchronous workflow service with provider calls outside database transactions
+- [x] official Google GenAI structured outputs and OpenAI Responses structured outputs
+- [x] pinned server-owned model mapping for Efficient, Balanced, and Deep intelligence tiers
+- [x] Gemini Efficient low-cost/low-latency default and optional OpenAI compatibility
+- [x] workflow-specific evidence guardrails and versioned hidden prompt compilation
+- [x] pending/completed/failed persistence with provider, model, tier, duration, and token metadata
+- [x] stable provider error normalization without key, prompt, or raw provider-response leakage
+- [x] bounded workflow input schemas and output-token ceilings
+- [x] personal-account throttling before provider calls (5/minute and 30/day defaults)
+- [x] 30-day run expiry, immediate history hiding, legacy backfill, and daily purge command
+- [x] authenticated execution-options and live workflow-run endpoints
+- [x] persisted frontend provider/tier preferences with unavailable-provider states
+- [x] token usage shown after successful live runs
+- [x] Render-first Next.js, Django, PostgreSQL, migration, and retention-cron Blueprint
+- [x] deployment and WorkOS callback runbook
+
+## Backend Part 2 verification in this workspace
+
+```text
+backend Ruff            PASS - formatting and lint
+migration consistency   PASS - migration applied locally
+Django checks           PASS - local and production deploy settings
+backend tests           PASS - 50 tests, 94.97% coverage
+Python dependency check PASS
+Gemini live smoke       PASS - structured StatusUpdateOutput, 173 input / 84 output tokens
+OpenAI live boundary    PASS - request reached API; insufficient quota normalized as non-retryable
+frontend lint           PASS
+frontend typecheck      PASS
+frontend tests          PASS - 11 files, 31 tests
+frontend build          PASS - Next.js 16.3, 26 routes/assets
+Render schema           PASS - current published Render JSON schema
+browser verification    PASS - settings desktop/mobile, light/dark, reduced motion, persistence,
+                          zero overflow, 44px targets, zero WCAG A/AA/2.2 violations, AuthKit redirect
+```
+
+Frontend Node gates ran from a clean verification copy on local `C:` storage. The mapped `X:` drive
+again stalled Node tooling and corrupted one installed Python dependency during package extraction;
+the same requirements installed cleanly on `C:` and reached the OpenAI API.

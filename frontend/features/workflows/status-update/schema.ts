@@ -7,7 +7,8 @@ export const statusUpdateInputSchema = z.object({
   notes: z
     .string()
     .trim()
-    .min(20, "Add a few concrete work notes before generating the update."),
+    .min(20, "Add a few concrete work notes before generating the update.")
+    .max(12000, "Keep work notes under 12,000 characters."),
   audience: z.enum(statusAudienceValues),
   format: z.enum(statusFormatValues),
 });

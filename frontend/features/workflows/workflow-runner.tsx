@@ -4,7 +4,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, FileCheck2, LoaderCircle, LockKeyhole, RefreshCcw } from "lucide-react";
 import { useState } from "react";
-import { useAppMode, type AppMode } from "@/components/providers/app-mode-provider";
+import {
+  useAppMode,
+  type AIProvider,
+  type AppMode,
+  type IntelligenceLevel,
+} from "@/components/providers/app-mode-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BugTriageForm } from "@/features/workflows/bug-triage/form";
@@ -22,6 +27,19 @@ import { ApiError } from "@/lib/api/errors";
 import { runDemoWorkflow, type DemoResult } from "@/lib/demo/run-demo";
 
 type WorkflowInput = BugTriageInput | MeetingActionsInput | StatusUpdateInput;
+type RunMetadata = {
+  provider: AIProvider;
+  intelligence: IntelligenceLevel;
+  inputTokens: number | null;
+  outputTokens: number | null;
+};
+
+const providerLabels: Record<AIProvider, string> = { gemini: "Gemini", openai: "OpenAI" };
+const intelligenceLabels: Record<IntelligenceLevel, string> = {
+  fast: "Efficient",
+  balanced: "Balanced",
+  high: "Deep",
+};
 
 function WorkflowForm({
   workflowId,
@@ -69,20 +87,33 @@ function ErrorPanel({ error, onRetry }: { error: ApiError; onRetry: (() => void)
   );
 }
 
-function WorkflowRunnerCore({ workflowId, mode }: { workflowId: WorkflowId; mode: AppMode }) {
+function WorkflowRunnerCore({
+  workflowId,
+  mode,
+  provider,
+  intelligence,
+}: {
+  workflowId: WorkflowId;
+  mode: AppMode;
+  provider: AIProvider;
+  intelligence: IntelligenceLevel;
+}) {
   const [result, setResult] = useState<DemoResult | null>(null);
+  const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [lastInput, setLastInput] = useState<WorkflowInput | null>(null);
   const reduceMotion = useReducedMotion();
   const queryClient = useQueryClient();
   const liveMutation = useMutation({
-    mutationFn: (input: WorkflowInput) => browserApi.createRun(workflowId, input),
+    mutationFn: (input: WorkflowInput) =>
+      browserApi.createRun(workflowId, input, { provider, intelligence }),
   });
 
   async function execute(input: WorkflowInput) {
     setLastInput(input);
     setError(null);
     if (mode === "demo") {
+      setRunMetadata(null);
       setResult(runDemoWorkflow(workflowId, input));
       return;
     }
@@ -100,6 +131,12 @@ function WorkflowRunnerCore({ workflowId, mode }: { workflowId: WorkflowId; mode
         }, 502);
       }
       setResult(nextResult);
+      setRunMetadata({
+        provider,
+        intelligence,
+        inputTokens: run.input_tokens,
+        outputTokens: run.output_tokens,
+      });
       await queryClient.invalidateQueries({ queryKey: ["runs"] });
     } catch (caught) {
       setError(
@@ -136,6 +173,14 @@ function WorkflowRunnerCore({ workflowId, mode }: { workflowId: WorkflowId; mode
                 ? "Authenticated results are validated by the API before display."
                 : "Deterministic output uses the same production result component."}
             </p>
+            {mode === "live" ? (
+              <p className="mt-2 text-xs font-semibold text-foreground-soft">
+                {providerLabels[provider]} · {intelligenceLabels[intelligence]}
+                {runMetadata && runMetadata.inputTokens !== null && runMetadata.outputTokens !== null
+                  ? ` · ${(runMetadata.inputTokens + runMetadata.outputTokens).toLocaleString()} tokens`
+                  : ""}
+              </p>
+            ) : null}
           </div>
           {result ? <CopyResultButton text={resultToText(result)} /> : null}
         </div>
@@ -193,10 +238,25 @@ function WorkflowRunnerCore({ workflowId, mode }: { workflowId: WorkflowId; mode
 }
 
 export function ManagedWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
-  const { mode } = useAppMode();
-  return <WorkflowRunnerCore key={mode} workflowId={workflowId} mode={mode} />;
+  const { mode, provider, intelligence } = useAppMode();
+  return (
+    <WorkflowRunnerCore
+      key={`${mode}:${provider}:${intelligence}`}
+      workflowId={workflowId}
+      mode={mode}
+      provider={provider}
+      intelligence={intelligence}
+    />
+  );
 }
 
 export function DemoWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
-  return <WorkflowRunnerCore workflowId={workflowId} mode="demo" />;
+  return (
+    <WorkflowRunnerCore
+      workflowId={workflowId}
+      mode="demo"
+      provider="gemini"
+      intelligence="fast"
+    />
+  );
 }

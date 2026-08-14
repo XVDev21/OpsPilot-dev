@@ -4,10 +4,12 @@ import { ApiError, type ApiErrorPayload } from "@/lib/api/errors";
 import {
   backendRunListSchema,
   backendUserSchema,
+  executionOptionsSchema,
   parseApiResponse,
   workflowRunSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
+import type { AIProvider, IntelligenceLevel } from "@/lib/api/types";
 
 const requestTimeoutMs = 30_000;
 
@@ -96,19 +98,30 @@ export const djangoApi = {
   async listRuns(accessToken: string) {
     return parseApiResponse(backendRunListSchema, await request<unknown>("/runs", { accessToken }));
   },
+  async executionOptions(accessToken: string) {
+    return parseApiResponse(
+      executionOptionsSchema,
+      await request<unknown>("/execution-options", { accessToken }),
+    );
+  },
   async getRun(accessToken: string, runId: string) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/runs/${encodeURIComponent(runId)}`, { accessToken }),
     );
   },
-  async createRun(accessToken: string, workflowId: WorkflowId, input: unknown) {
+  async createRun(
+    accessToken: string,
+    workflowId: WorkflowId,
+    input: unknown,
+    options: { provider: AIProvider; intelligence: IntelligenceLevel },
+  ) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/workflows/${workflowId}/runs`, {
         accessToken,
         method: "POST",
-        body: JSON.stringify(input),
+        body: JSON.stringify({ input, options }),
       }),
     );
   },

@@ -3,14 +3,22 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
 export type AppMode = "live" | "demo";
+export type AIProvider = "gemini" | "openai";
+export type IntelligenceLevel = "fast" | "balanced" | "high";
 
 interface AppModeContextValue {
   mode: AppMode;
   setMode: (mode: AppMode) => void;
+  provider: AIProvider;
+  setProvider: (provider: AIProvider) => void;
+  intelligence: IntelligenceLevel;
+  setIntelligence: (intelligence: IntelligenceLevel) => void;
 }
 
-const storageKey = "opspilot:mode:v1";
-const modeChangeEvent = "opspilot:mode-change";
+const modeStorageKey = "opspilot:mode:v1";
+const providerStorageKey = "opspilot:provider:v1";
+const intelligenceStorageKey = "opspilot:intelligence:v1";
+const preferenceChangeEvent = "opspilot:preferences-change";
 const AppModeContext = createContext<AppModeContextValue | null>(null);
 
 function getModeStorage() {
@@ -22,31 +30,65 @@ function getModeStorage() {
 }
 
 function readMode(): AppMode {
-  const saved = getModeStorage()?.getItem(storageKey);
+  const saved = getModeStorage()?.getItem(modeStorageKey);
   return saved === "demo" ? "demo" : "live";
 }
 
-function subscribeToMode(onStoreChange: () => void) {
+function readProvider(): AIProvider {
+  return getModeStorage()?.getItem(providerStorageKey) === "openai" ? "openai" : "gemini";
+}
+
+function readIntelligence(): IntelligenceLevel {
+  const saved = getModeStorage()?.getItem(intelligenceStorageKey);
+  return saved === "balanced" || saved === "high" ? saved : "fast";
+}
+
+function subscribeToPreferences(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange);
-  window.addEventListener(modeChangeEvent, onStoreChange);
+  window.addEventListener(preferenceChangeEvent, onStoreChange);
   return () => {
     window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(modeChangeEvent, onStoreChange);
+    window.removeEventListener(preferenceChangeEvent, onStoreChange);
   };
 }
 
+function persistPreference(key: string, value: string) {
+  getModeStorage()?.setItem(key, value);
+  window.dispatchEvent(new Event(preferenceChangeEvent));
+}
+
+function readPreferences() {
+  return `${readMode()}:${readProvider()}:${readIntelligence()}`;
+}
+
 export function AppModeProvider({ children }: { children: ReactNode }) {
-  const mode = useSyncExternalStore<AppMode>(subscribeToMode, readMode, () => "live");
+  const snapshot = useSyncExternalStore<string>(
+    subscribeToPreferences,
+    readPreferences,
+    () => "live:gemini:fast",
+  );
+  const [mode, provider, intelligence] = snapshot.split(":") as [
+    AppMode,
+    AIProvider,
+    IntelligenceLevel,
+  ];
 
   const value = useMemo<AppModeContextValue>(
     () => ({
       mode,
+      provider,
+      intelligence,
       setMode(nextMode) {
-        getModeStorage()?.setItem(storageKey, nextMode);
-        window.dispatchEvent(new Event(modeChangeEvent));
+        persistPreference(modeStorageKey, nextMode);
+      },
+      setProvider(nextProvider) {
+        persistPreference(providerStorageKey, nextProvider);
+      },
+      setIntelligence(nextIntelligence) {
+        persistPreference(intelligenceStorageKey, nextIntelligence);
       },
     }),
-    [mode],
+    [intelligence, mode, provider],
   );
 
   return <AppModeContext.Provider value={value}>{children}</AppModeContext.Provider>;
