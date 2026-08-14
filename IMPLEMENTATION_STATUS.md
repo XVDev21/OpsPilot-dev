@@ -29,6 +29,7 @@
 - [x] clean verification copy passes backend format, lint, migrations, system checks, and 50 tests at
   94.97% coverage
 - [x] Vercel production deployment and environment binding at `https://opspilot-dev.vercel.app`
+- [x] Vercel server functions colocated with the backend in Singapore (`sin1`)
 - [x] Render Free API deployment and environment binding at
   `https://opspilot-api-dhk7.onrender.com`
 - [x] Render Free PostgreSQL provisioned in Singapore with external ingress disabled
