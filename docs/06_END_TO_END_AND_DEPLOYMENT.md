@@ -145,39 +145,47 @@ Rules:
 - same result UI
 - ideal hackathon fallback
 
-## Preferred production topology: Render
+## Selected hobby topology: Vercel + Render
 
 One Git repository.
 
-Service 1:
+Frontend:
 
 ```text
 OpsPilot Web
+platform: Vercel Hobby
 rootDir: frontend
-runtime: Node
+runtime: Node 24
 ```
 
-Service 2:
+Backend:
 
 ```text
 OpsPilot API
+platform: Render Free Web Service
 rootDir: backend
-runtime: Python
+runtime: Python 3.14.3
+region: Singapore
 ```
 
 Database:
 
 ```text
-Render PostgreSQL
+Render Free PostgreSQL
+region: Singapore
 ```
 
-The repository-root `render.yaml` is the canonical Blueprint. It also provisions a daily cron service
-that permanently purges expired workflow runs. See `docs/10_RENDER_DEPLOYMENT_RUNBOOK.md` for the
-first-deploy variable and callback sequence.
+The repository-root `render.yaml` is the canonical backend Blueprint. Render Free does not support
+cron services or pre-deploy commands, so migrations and the purge command run as part of each backend
+build. Expired runs remain hidden immediately by the API. Strict scheduled physical deletion requires
+upgrading the retention cron to a paid instance.
 
 Frontend and backend deploy independently.
 
-## Frontend Render behavior
+Free Render PostgreSQL expires after 30 days, has no backups, and is suitable only for the approved
+personal/non-commercial hobby deployment. Upgrade or replace it before expiry to preserve data.
+
+## Frontend Vercel behavior
 
 Typical build/start shape:
 
@@ -212,11 +220,7 @@ Environment includes:
 - WorkOS validation settings
 - Gemini and optional OpenAI secrets
 
-## Optional Vercel frontend
-
-`frontend/` can deploy to Vercel independently.
-
-Django remains on Render.
+## Vercel-to-Render binding
 
 Set:
 

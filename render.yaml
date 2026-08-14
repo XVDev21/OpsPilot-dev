@@ -1,44 +1,23 @@
 databases:
   - name: opspilot-db
-    plan: basic-256mb
+    plan: free
+    region: singapore
+    ipAllowList: []
 
 services:
-  - type: web
-    name: opspilot-web
-    runtime: node
-    rootDir: frontend
-    plan: starter
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    healthCheckPath: /
-    autoDeployTrigger: checksPass
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_BASE_URL
-        sync: false
-      - key: NEXT_PUBLIC_SITE_URL
-        sync: false
-      - key: WORKOS_CLIENT_ID
-        sync: false
-      - key: WORKOS_API_KEY
-        sync: false
-      - key: WORKOS_COOKIE_PASSWORD
-        generateValue: true
-      - key: NEXT_PUBLIC_WORKOS_REDIRECT_URI
-        sync: false
-
   - type: web
     name: opspilot-api
     runtime: python
     rootDir: backend
-    plan: starter
-    buildCommand: pip install -r requirements.txt
-    preDeployCommand: python manage.py migrate --noinput
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py purge_expired_runs
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60
     healthCheckPath: /api/v1/health
     autoDeployTrigger: checksPass
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.production
       - key: DJANGO_SECRET_KEY
@@ -71,21 +50,3 @@ services:
         value: "30"
       - key: WORKFLOW_RETENTION_DAYS
         value: "30"
-
-  - type: cron
-    name: opspilot-retention
-    runtime: python
-    rootDir: backend
-    plan: starter
-    schedule: "17 3 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py purge_expired_runs
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.maintenance
-      - key: DJANGO_SECRET_KEY
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: opspilot-db
-          property: connectionString
