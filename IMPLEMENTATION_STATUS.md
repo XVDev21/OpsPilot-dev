@@ -2,15 +2,15 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Frontend Part 2 complete
-**Status:** Ready to begin Backend Part 1
+**Current milestone:** Backend Part 1 complete
+**Status:** Ready to begin Backend Part 2 after product-policy decisions
 
 ## Milestones
 
 - [x] Greenfield bootstrap
 - [x] Frontend Part 1 - visible product core
 - [x] Frontend Part 2 - WorkOS + live API frontend
-- [ ] Backend Part 1 - Django foundation
+- [x] Backend Part 1 - Django foundation
 - [ ] Backend Part 2 - Gemini workflow engine
 - [ ] End-to-end integration
 - [ ] Deployment
@@ -36,6 +36,9 @@
 - [x] reduced motion checked
 - [x] automated WCAG A/AA/2.2 audit passes with zero violations on landing and workflow result scopes
 - [x] production server browser smoke passes with no page errors
+- [x] Django 5.2 LTS service runs in Windows PowerShell
+- [x] backend Ruff, migrations, system, deployment, test, coverage, and dependency checks pass
+- [x] frontend/backend shared v1 contract fixtures pass
 
 ## Frontend Part 1 visible surfaces
 
@@ -78,7 +81,8 @@
 - [x] public authentication CTAs and separate guest demo routes
 - [x] local WorkOS environment configured in gitignored `frontend/.env.local`
 - [x] WorkOS hosted sign-in verified in a browser with Google available
-- [ ] live Django calls verified (backend intentionally not created yet)
+- [x] public Django health and signed-out Next.js API boundary verified
+- [ ] authenticated WorkOS access-token call to Django verified with a real signed-in browser session
 - [x] final desktop/mobile/light/dark/system/reduced-motion browser pass
 
 ## Frontend Part 2 verification in this workspace
@@ -93,6 +97,52 @@ browser verification     PASS - desktop, mobile, themes, reduced motion, workflo
 ```
 
 The Windows scripts use Next.js' supported Webpack path for `dev` and `build`. Turbopack repeatedly stalled on the mapped `X:` drive and reported a slow/network filesystem; Webpack completes reliably in the required Windows-native workflow.
+
+## Backend Part 1 implementation
+
+- [x] split local, test, and production Django settings
+- [x] SQLite local and PostgreSQL production configuration
+- [x] UUID `AppUser` identity cache keyed by authoritative WorkOS user ID
+- [x] UUID `WorkflowRun` persistence with lifecycle, prompt version, provider metadata, and ownership index
+- [x] WorkOS RS256 Bearer verification through client-specific JWKS
+- [x] required issuer, subject, client ID, issued-at, and expiration claim validation
+- [x] bounded JWKS cache/network settings and retryable authentication-outage errors
+- [x] request-ID middleware and stable production-safe API error envelope
+- [x] authenticated `/me`, workflow registry, history, detail, and delete endpoints
+- [x] cross-user access prevention in selectors and tests
+- [x] Django Ninja OpenAPI Bearer security definition
+- [x] versioned shared API fixtures in `contracts/v1/`
+- [x] Linux/Windows backend and frontend GitHub Actions jobs
+- [x] Dependabot configuration for npm, pip, and GitHub Actions
+- [x] production-readiness initiative and release-gate plan
+
+Backend Part 1 intentionally does not expose a workflow-run `POST` endpoint. Live provider execution
+belongs to Backend Part 2 so run state, provider errors, schema validation, and persistence are added as
+one complete transaction boundary.
+
+## Backend Part 1 verification in this workspace
+
+```text
+Ruff format             PASS - 48 files
+Ruff lint               PASS
+migration consistency   PASS - no model changes missing migrations
+Django system check     PASS
+Django deploy check     PASS - production settings, fail level ERROR
+backend tests           PASS - 24 tests
+backend coverage        PASS - 96.13% (90% gate)
+Python dependency check PASS - no broken requirements
+frontend lint           PASS
+frontend typecheck      PASS
+frontend tests          PASS - 10 files, 28 tests
+frontend build          PASS - Next.js 16.3, 25 routes/assets
+browser integration     PASS - desktop, 390x844 mobile, light/dark, Demo workflow, AuthKit redirect
+API smoke               PASS - Django health and stable signed-out boundary
+```
+
+The final frontend gate ran from a clean verification copy on local `C:` storage because npm package
+extraction left an incomplete ignored `node_modules/` tree on the mapped `X:` drive. The source under
+test was the repository source. Use the recommended `C:\Dev\OpsPilot-AI` path for the most reliable
+Next.js development loop.
 
 ## Verification notes
 
@@ -109,13 +159,20 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 
 ## Intentional deferrals
 
-- Django / Django Ninja backend
 - Gemini or any live AI provider call
+- live workflow-run creation endpoint
+- organization/workspace authorization
+- scheduled retention deletion and production throttling
 - Production domain and deployment configuration
 
 ## Next-phase prerequisites
 
-- Register `http://localhost:3000/auth/callback` as the WorkOS redirect URI.
-- Set the WorkOS sign-in URL to `http://localhost:3000/sign-in` and default logout URI to `http://localhost:3000/`.
-- Rotate the test API key that was exposed in chat and write the replacement directly to `frontend/.env.local` and the deployment secret store.
-- Backend Part 1 needs no Gemini key. Live history and workflow execution will report backend unavailability until Django is implemented.
+- Rotate the WorkOS API key exposed in chat. Backend token validation needs only the public client ID;
+  keep any replacement API key server-only in the Next.js/deployment secret store.
+- Remove `GEMINI_API_KEY` from `frontend/.env.local`; Backend Part 2 will read it only from
+  `backend/.env` locally and the backend deployment secret store in production.
+- Confirm personal ownership versus WorkOS organization workspaces.
+- Choose workflow input/result retention and deletion policy.
+- Choose deployment topology, production domain/region, and acceptable Gemini cost/latency limits.
+- Sign in once during the Backend Part 2 browser pass so the real WorkOS token -> Next.js BFF ->
+  Django identity path can be smoke-tested end to end without sharing credentials.

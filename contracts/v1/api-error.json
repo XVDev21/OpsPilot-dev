@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The request could not be validated.",
+    "fieldErrors": {
+      "page": ["Input should be greater than or equal to 1"]
+    },
+    "requestId": "7d7fc69a-b4e5-4eb1-a7be-63cbf9fc7bea",
+    "retryable": false
+  }
+}
