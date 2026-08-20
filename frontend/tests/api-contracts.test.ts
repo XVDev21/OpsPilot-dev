@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import currentUserFixture from "../../contracts/v1/current-user.json";
 import executionOptionsFixture from "../../contracts/v1/execution-options.json";
+import providerCredentialsFixture from "../../contracts/v1/provider-credentials.json";
 import runListFixture from "../../contracts/v1/run-list.json";
 import workflowRunFixture from "../../contracts/v1/workflow-run.json";
 import { runToResult } from "@/features/workflows/run-adapter";
@@ -10,6 +11,7 @@ import {
   backendUserSchema,
   executionOptionsSchema,
   parseApiResponse,
+  providerCredentialListSchema,
   runListResponseSchema,
   workflowRunSchema,
 } from "@/lib/api/schemas";
@@ -37,6 +39,17 @@ describe("live API contracts", () => {
       defaultIntelligence: "fast",
       retentionDays: 30,
     });
+  });
+
+  it("accepts masked personal-provider credential status without exposing API keys", () => {
+    const parsed = providerCredentialListSchema.parse(providerCredentialsFixture);
+
+    expect(parsed.items).toHaveLength(3);
+    expect(parsed.items.find((item) => item.provider === "openai")).toMatchObject({
+      configured: true,
+      keyFingerprint: "63d0c8eb9a10",
+    });
+    expect(JSON.stringify(parsed)).not.toContain("apiKey");
   });
 
   it("turns contract drift into a retryable API error", () => {

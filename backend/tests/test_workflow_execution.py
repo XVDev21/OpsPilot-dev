@@ -5,6 +5,7 @@ from django.test import Client, override_settings
 from pydantic import BaseModel
 
 from accounts.models import AppUser
+from ai.providers.registry import ResolvedProvider
 from ai.types import ProviderFailure, ProviderResult
 from runs.models import WorkflowRun
 
@@ -86,7 +87,10 @@ def test_all_live_workflows_complete_and_persist(
     monkeypatch: pytest.MonkeyPatch,
     workflow_id: str,
 ) -> None:
-    monkeypatch.setattr("runs.services.get_provider", lambda provider: StubProvider())
+    monkeypatch.setattr(
+        "runs.services.get_provider",
+        lambda **kwargs: ResolvedProvider(adapter=StubProvider(), credential_source="platform"),
+    )
 
     response = authenticated_client.post(
         f"/api/v1/workflows/{workflow_id}/runs",
@@ -101,6 +105,7 @@ def test_all_live_workflows_complete_and_persist(
     body = response.json()
     assert body["status"] == "completed"
     assert body["provider"] == "openai"
+    assert body["credential_source"] == "platform"
     assert body["intelligence"] == "balanced"
     assert body["prompt_version"] == "v2-provider-neutral"
     assert body["input_tokens"] == 101
@@ -116,7 +121,7 @@ def test_unknown_workflow_and_bad_input_do_not_call_provider(
 ) -> None:
     monkeypatch.setattr(
         "runs.services.get_provider",
-        lambda provider: pytest.fail("provider should not be called"),
+        lambda **kwargs: pytest.fail("provider should not be called"),
     )
     unknown = authenticated_client.post(
         "/api/v1/workflows/freeform/runs",
@@ -170,7 +175,10 @@ def test_provider_failures_persist_safe_failed_run(
         def generate_structured(self, **kwargs):
             raise failure
 
-    monkeypatch.setattr("runs.services.get_provider", lambda provider: FailingProvider())
+    monkeypatch.setattr(
+        "runs.services.get_provider",
+        lambda **kwargs: ResolvedProvider(adapter=FailingProvider(), credential_source="platform"),
+    )
     response = authenticated_client.post(
         "/api/v1/workflows/status-update/runs",
         data={"input": VALID_INPUTS["status-update"]},
@@ -196,7 +204,7 @@ def test_personal_run_throttle_stops_call_before_reservation(
     WorkflowRun.objects.create(user=user, workflow_id="bug-triage", input_json={})
     monkeypatch.setattr(
         "runs.services.get_provider",
-        lambda provider: pytest.fail("provider should not be called"),
+        lambda **kwargs: pytest.fail("provider should not be called"),
     )
 
     response = authenticated_client.post(
@@ -211,7 +219,7 @@ def test_personal_run_throttle_stops_call_before_reservation(
 
 
 def test_execution_options_report_provider_availability(authenticated_client: Client) -> None:
-    with override_settings(GEMINI_API_KEY="test", OPENAI_API_KEY=""):
+    with override_settings(GEMINI_API_KEY="test", OPENAI_API_KEY="", QWEN_API_KEY=""):
         response = authenticated_client.get("/api/v1/execution-options")
 
     assert response.status_code == 200
@@ -219,6 +227,28 @@ def test_execution_options_report_provider_availability(authenticated_client: Cl
     assert response.json()["defaultIntelligence"] == "fast"
     assert response.json()["retentionDays"] == 30
     assert response.json()["providers"] == [
-        {"id": "gemini", "label": "Gemini", "enabled": True},
-        {"id": "openai", "label": "OpenAI", "enabled": False},
+        {
+            "id": "gemini",
+            "label": "Gemini",
+            "description": "Google models with the default low-cost structured workflow route.",
+            "enabled": True,
+            "credentialSource": "platform",
+            "supportsPersonalKey": True,
+        },
+        {
+            "id": "openai",
+            "label": "OpenAI",
+            "description": "OpenAI Responses models using the same validated workflow contracts.",
+            "enabled": False,
+            "credentialSource": None,
+            "supportsPersonalKey": True,
+        },
+        {
+            "id": "qwen",
+            "label": "Qwen",
+            "description": "Alibaba Cloud Model Studio through its OpenAI-compatible API.",
+            "enabled": False,
+            "credentialSource": None,
+            "supportsPersonalKey": True,
+        },
     ]

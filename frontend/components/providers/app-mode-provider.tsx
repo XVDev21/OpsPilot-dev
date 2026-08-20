@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
 export type AppMode = "live" | "demo";
-export type AIProvider = "gemini" | "openai";
+export type AIProvider = "gemini" | "openai" | "qwen";
 export type IntelligenceLevel = "fast" | "balanced" | "high";
 
 interface AppModeContextValue {
@@ -35,7 +35,8 @@ function readMode(): AppMode {
 }
 
 function readProvider(): AIProvider {
-  return getModeStorage()?.getItem(providerStorageKey) === "openai" ? "openai" : "gemini";
+  const saved = getModeStorage()?.getItem(providerStorageKey);
+  return saved === "openai" || saved === "qwen" ? saved : "gemini";
 }
 
 function readIntelligence(): IntelligenceLevel {

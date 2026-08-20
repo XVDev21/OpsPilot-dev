@@ -17,8 +17,10 @@ export const backendUserSchema = z.object({
 });
 
 export const runStatusSchema = z.enum(["pending", "completed", "failed"]);
-export const aiProviderSchema = z.enum(["gemini", "openai"]);
+export const aiProviderSchema = z.enum(["gemini", "openai", "qwen"]);
 export const intelligenceLevelSchema = z.enum(["fast", "balanced", "high"]);
+export const credentialSourceSchema = z.enum(["personal", "platform"]);
+export const qwenEndpointRegionSchema = z.enum(["singapore", "us", "beijing"]);
 
 export const runOptionsSchema = z.object({
   provider: aiProviderSchema,
@@ -31,7 +33,14 @@ export const createRunRequestSchema = z.object({
 });
 
 export const executionOptionsSchema = z.object({
-  providers: z.array(z.object({ id: aiProviderSchema, label: z.string(), enabled: z.boolean() })),
+  providers: z.array(z.object({
+    id: aiProviderSchema,
+    label: z.string(),
+    description: z.string(),
+    enabled: z.boolean(),
+    credentialSource: credentialSourceSchema.nullable(),
+    supportsPersonalKey: z.boolean(),
+  })),
   intelligenceLevels: z.array(z.object({
     id: intelligenceLevelSchema,
     label: z.string(),
@@ -43,6 +52,27 @@ export const executionOptionsSchema = z.object({
   retentionDays: z.number().int().positive(),
 });
 
+export const providerCredentialInputSchema = z.object({
+  apiKey: z.string().trim().min(16).max(2_048),
+  endpointRegion: qwenEndpointRegionSchema.nullable().optional(),
+  workspaceId: z.string().trim().min(2).max(63)
+    .regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])$/)
+    .nullable().optional(),
+});
+
+export const providerCredentialSummarySchema = z.object({
+  provider: aiProviderSchema,
+  configured: z.boolean(),
+  keyFingerprint: z.string().nullable(),
+  endpointRegion: qwenEndpointRegionSchema.nullable(),
+  workspaceId: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+export const providerCredentialListSchema = z.object({
+  items: z.array(providerCredentialSummarySchema),
+});
+
 export const workflowRunSchema = z.object({
   id: z.string().min(1),
   workflow_id: z.enum(workflowIds),
@@ -51,6 +81,7 @@ export const workflowRunSchema = z.object({
   result_json: jsonValueSchema.nullable(),
   error_code: z.string().nullable(),
   provider: z.string().nullable(),
+  credential_source: credentialSourceSchema.nullable(),
   model: z.string().nullable(),
   intelligence: intelligenceLevelSchema.nullable(),
   prompt_version: z.string().nullable(),

@@ -1,7 +1,7 @@
 from django.conf import settings
 from ninja import Router
 
-from ai.providers.registry import provider_is_enabled
+from ai.providers.registry import PROVIDER_CATALOG, credential_source_for, provider_is_enabled
 from workflows.registry import WORKFLOW_REGISTRY
 from workflows.schemas import ExecutionOptions, WorkflowMetadata
 
@@ -21,8 +21,15 @@ def list_workflows(request):
 def execution_options(request):
     return {
         "providers": [
-            {"id": "gemini", "label": "Gemini", "enabled": provider_is_enabled("gemini")},
-            {"id": "openai", "label": "OpenAI", "enabled": provider_is_enabled("openai")},
+            {
+                "id": provider.id,
+                "label": provider.label,
+                "description": provider.description,
+                "enabled": provider_is_enabled(provider.id, user=request.auth.user),
+                "credentialSource": credential_source_for(provider.id, user=request.auth.user),
+                "supportsPersonalKey": True,
+            }
+            for provider in PROVIDER_CATALOG
         ],
         "intelligenceLevels": [
             {

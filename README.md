@@ -33,11 +33,14 @@ Django
 Django Ninja
 Pydantic
 PostgreSQL production
-Gemini provider adapter
+Gemini, OpenAI, and Qwen provider adapters
+Encrypted per-user provider credentials
 ```
 
-The frontend and Django API are both implemented. Live Gemini execution remains intentionally
-deferred to Backend Part 2; Demo Mode stays deterministic and backend-independent.
+The frontend and Django API are implemented. Authenticated Live Mode executes the three structured
+workflows through Gemini, OpenAI, or Qwen; deterministic Demo Mode remains backend-independent.
+Platform credentials can be configured on the API, while an authenticated user can add an encrypted
+personal credential that overrides the platform key only for that provider and account.
 
 ## Local development
 
@@ -62,7 +65,8 @@ Copy-Item .env.example .env
 
 See `backend/README.md` for configuration and `IMPLEMENTATION_STATUS.md` for verified delivery
 state. The production-readiness initiatives and release gates live in
-`docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`.
+`docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`. Live provider setup, credential rotation, and
+deployment requirements are documented in `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`.
 
 ## Development environment
 
@@ -105,6 +109,8 @@ Read:
 10. `docs/07_WINDOWS_TESTING_AND_SECURITY.md`
 11. `docs/08_OFFICIAL_REFERENCE_CHECKLIST.md`
 12. `docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`
+13. `docs/10_RENDER_DEPLOYMENT_RUNBOOK.md`
+14. `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`
 
 ## Scope discipline
 

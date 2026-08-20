@@ -3,11 +3,13 @@ import {
   backendUserSchema,
   executionOptionsSchema,
   parseApiResponse,
+  providerCredentialListSchema,
+  providerCredentialSummarySchema,
   runListResponseSchema,
   workflowRunSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
-import type { AIProvider, IntelligenceLevel } from "@/lib/api/types";
+import type { AIProvider, IntelligenceLevel, ProviderCredentialInput } from "@/lib/api/types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
@@ -58,6 +60,23 @@ export const browserApi = {
       await request<unknown>("/api/backend/execution-options"),
     );
   },
+  async listProviderCredentials() {
+    return parseApiResponse(
+      providerCredentialListSchema,
+      await request<unknown>("/api/backend/provider-credentials"),
+    );
+  },
+  async saveProviderCredential(provider: AIProvider, input: ProviderCredentialInput) {
+    return parseApiResponse(
+      providerCredentialSummarySchema,
+      await request<unknown>(`/api/backend/provider-credentials/${provider}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  deleteProviderCredential: (provider: AIProvider) =>
+    request<void>(`/api/backend/provider-credentials/${provider}`, { method: "DELETE" }),
   async getRun(runId: string) {
     return parseApiResponse(
       workflowRunSchema,

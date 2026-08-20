@@ -6,10 +6,12 @@ import {
   backendUserSchema,
   executionOptionsSchema,
   parseApiResponse,
+  providerCredentialListSchema,
+  providerCredentialSummarySchema,
   workflowRunSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
-import type { AIProvider, IntelligenceLevel } from "@/lib/api/types";
+import type { AIProvider, IntelligenceLevel, ProviderCredentialInput } from "@/lib/api/types";
 
 const requestTimeoutMs = 30_000;
 
@@ -103,6 +105,32 @@ export const djangoApi = {
       executionOptionsSchema,
       await request<unknown>("/execution-options", { accessToken }),
     );
+  },
+  async listProviderCredentials(accessToken: string) {
+    return parseApiResponse(
+      providerCredentialListSchema,
+      await request<unknown>("/provider-credentials", { accessToken }),
+    );
+  },
+  async saveProviderCredential(
+    accessToken: string,
+    provider: AIProvider,
+    input: ProviderCredentialInput,
+  ) {
+    return parseApiResponse(
+      providerCredentialSummarySchema,
+      await request<unknown>(`/provider-credentials/${provider}`, {
+        accessToken,
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  deleteProviderCredential(accessToken: string, provider: AIProvider) {
+    return request<void>(`/provider-credentials/${provider}`, {
+      accessToken,
+      method: "DELETE",
+    });
   },
   async getRun(accessToken: string, runId: string) {
     return parseApiResponse(

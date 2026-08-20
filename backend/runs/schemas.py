@@ -26,6 +26,7 @@ class WorkflowRunSchema(ModelSchema):
             "result_json",
             "error_code",
             "provider",
+            "credential_source",
             "model",
             "intelligence",
             "prompt_version",
@@ -44,7 +45,7 @@ class RunListResponse(Schema):
 
 
 class RunOptions(Schema):
-    provider: Literal["gemini", "openai"] | None = None
+    provider: Literal["gemini", "openai", "qwen"] | None = None
     intelligence: Literal["fast", "balanced", "high"] | None = None
 
 

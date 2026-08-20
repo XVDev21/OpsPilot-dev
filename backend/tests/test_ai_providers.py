@@ -6,15 +6,20 @@ import pytest
 from django.test import override_settings
 from google.genai import errors
 
+from accounts.models import AppUser
 from ai.providers.gemini import GeminiProvider
 from ai.providers.openai import OpenAIProvider
+from ai.providers.qwen import QwenProvider
 from ai.providers.registry import (
+    credential_source_for,
     get_provider,
     max_output_tokens_for,
     model_for,
     provider_is_enabled,
+    qwen_base_url,
 )
 from ai.types import ProviderFailure
+from integrations.services import save_provider_credential
 from workflows.schemas import BugTriageOutput
 
 VALID_OUTPUT = {
@@ -36,6 +41,9 @@ class RaisingMethod:
         raise self.error
 
     def parse(self, **kwargs):
+        raise self.error
+
+    def create(self, **kwargs):
         raise self.error
 
 
@@ -210,24 +218,224 @@ def test_openai_errors_are_normalized(error: Exception, code: str, retryable: bo
     assert (captured.value.code, captured.value.retryable) == (code, retryable)
 
 
+@pytest.mark.django_db
 def test_provider_registry_keeps_keys_and_models_server_owned(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    with override_settings(GEMINI_API_KEY="", OPENAI_API_KEY=""):
+    user = AppUser.objects.create(workos_user_id="provider-registry-user")
+    with override_settings(GEMINI_API_KEY="", OPENAI_API_KEY="", QWEN_API_KEY=""):
         assert not provider_is_enabled("gemini")
         with pytest.raises(ProviderFailure):
-            get_provider("openai")
+            get_provider(provider="openai", user=user)
 
     sentinel = object()
     monkeypatch.setattr("ai.providers.registry.GeminiProvider", lambda **kwargs: sentinel)
     with override_settings(GEMINI_API_KEY="secret"):
         assert provider_is_enabled("gemini")
-        assert get_provider("gemini") is sentinel
+        resolved = get_provider(provider="gemini", user=user)
+        assert resolved.adapter is sentinel
+        assert resolved.credential_source == "platform"
 
     monkeypatch.setattr("ai.providers.registry.OpenAIProvider", lambda **kwargs: sentinel)
     with override_settings(OPENAI_API_KEY="secret"):
         assert provider_is_enabled("openai")
-        assert get_provider("openai") is sentinel
+        assert get_provider(provider="openai", user=user).adapter is sentinel
+
+    monkeypatch.setattr("ai.providers.registry.QwenProvider", lambda **kwargs: sentinel)
+    with override_settings(QWEN_API_KEY="secret", QWEN_REGION="us", QWEN_WORKSPACE_ID=""):
+        assert provider_is_enabled("qwen")
+        assert get_provider(provider="qwen", user=user).adapter is sentinel
 
     assert model_for("gemini", "fast")
     assert max_output_tokens_for("high") == 3200
+
+
+@pytest.mark.django_db
+@override_settings(
+    PROVIDER_CREDENTIAL_ENCRYPTION_KEYS=["test-provider-credential-secret-that-is-long-enough"],
+    OPENAI_API_KEY="platform-openai-key",
+)
+def test_personal_provider_key_takes_precedence_without_leaving_the_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = AppUser.objects.create(workos_user_id="personal-provider-user")
+    save_provider_credential(
+        user=user,
+        provider="openai",
+        api_key="sk-personal-openai-key-that-is-long-enough",
+        endpoint_region=None,
+        workspace_id=None,
+    )
+    constructor_args: dict[str, object] = {}
+    sentinel = object()
+
+    def capture_provider(**kwargs):
+        constructor_args.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr("ai.providers.registry.OpenAIProvider", capture_provider)
+
+    resolved = get_provider(provider="openai", user=user)
+
+    assert resolved.adapter is sentinel
+    assert resolved.credential_source == "personal"
+    assert resolved.credential_id is not None
+    assert constructor_args["api_key"] == "sk-personal-openai-key-that-is-long-enough"
+    assert credential_source_for("openai", user=user) == "personal"
+
+
+def test_qwen_structured_success_and_invalid_output() -> None:
+    request_args: list[dict] = []
+    responses = [
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=BugTriageOutput.model_validate(VALID_OUTPUT).model_dump_json()
+                    )
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=21, completion_tokens=11),
+        ),
+        SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))],
+            usage=None,
+        ),
+    ]
+
+    def create_completion(**kwargs):
+        request_args.append(kwargs)
+        return responses.pop(0)
+
+    provider = QwenProvider.__new__(QwenProvider)
+    provider.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create_completion))
+    )
+    kwargs = {
+        "model": "qwen-test",
+        "system_instruction": "Return structured output.",
+        "user_content": "validated input",
+        "output_schema": BugTriageOutput,
+        "max_output_tokens": 100,
+    }
+
+    result = provider.generate_structured(**kwargs)
+    assert result.output.summary == "Large exports stall."
+    assert (result.input_tokens, result.output_tokens) == (21, 11)
+    assert request_args[0]["response_format"] == {"type": "json_object"}
+    assert request_args[0]["extra_body"] == {"enable_thinking": False}
+    assert request_args[0]["max_completion_tokens"] == 100
+    assert "max_tokens" not in request_args[0]
+    with pytest.raises(ProviderFailure) as captured:
+        provider.generate_structured(**kwargs)
+    assert captured.value.code == "INVALID_AI_OUTPUT"
+
+
+def test_qwen_client_is_bounded_to_the_resolved_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    constructor_args: dict[str, object] = {}
+
+    def capture_client(**kwargs):
+        constructor_args.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("ai.providers.qwen.OpenAI", capture_client)
+
+    QwenProvider(
+        api_key="qwen-personal-key-that-is-long-enough",
+        base_url="https://dashscope-us.aliyuncs.com/compatible-mode/v1",
+        timeout_seconds=30,
+    )
+
+    assert constructor_args == {
+        "api_key": "qwen-personal-key-that-is-long-enough",
+        "base_url": "https://dashscope-us.aliyuncs.com/compatible-mode/v1",
+        "timeout": 30,
+        "max_retries": 0,
+    }
+
+
+def test_qwen_empty_output_is_normalized() -> None:
+    provider = QwenProvider.__new__(QwenProvider)
+    provider.client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(
+                create=lambda **kwargs: SimpleNamespace(choices=[], usage=None)
+            )
+        )
+    )
+
+    with pytest.raises(ProviderFailure) as captured:
+        provider.generate_structured(
+            model="qwen-test",
+            system_instruction="Return structured output.",
+            user_content="validated input",
+            output_schema=BugTriageOutput,
+            max_output_tokens=100,
+        )
+
+    assert captured.value.code == "INVALID_AI_OUTPUT"
+
+
+@pytest.mark.parametrize(
+    ("error", "code", "retryable"),
+    [
+        (openai_error(401), "AI_AUTH_ERROR", False),
+        (openai_error(429), "AI_RATE_LIMITED", True),
+        (
+            openai.APITimeoutError(httpx2.Request("POST", "https://qwen-api.test")),
+            "AI_TIMEOUT",
+            True,
+        ),
+        (
+            openai.APIConnectionError(request=httpx2.Request("POST", "https://qwen-api.test")),
+            "AI_UNAVAILABLE",
+            True,
+        ),
+        (openai_error(503), "AI_UNAVAILABLE", True),
+        (openai_error(400), "AI_REQUEST_FAILED", False),
+    ],
+)
+def test_qwen_errors_are_normalized(error: Exception, code: str, retryable: bool) -> None:
+    provider = QwenProvider.__new__(QwenProvider)
+    provider.client = SimpleNamespace(chat=SimpleNamespace(completions=RaisingMethod(error)))
+
+    with pytest.raises(ProviderFailure) as captured:
+        provider.generate_structured(
+            model="qwen-test",
+            system_instruction="Return structured output.",
+            user_content="validated input",
+            output_schema=BugTriageOutput,
+            max_output_tokens=100,
+        )
+
+    assert (captured.value.code, captured.value.retryable) == (code, retryable)
+
+
+@pytest.mark.parametrize(
+    ("region", "workspace_id", "expected"),
+    [
+        (
+            "singapore",
+            "ws-test-123",
+            "https://ws-test-123.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        ),
+        (
+            "beijing",
+            "ws-test-123",
+            "https://ws-test-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        ),
+        ("us", "", "https://dashscope-us.aliyuncs.com/compatible-mode/v1"),
+    ],
+)
+def test_qwen_base_urls_are_server_constructed(
+    region: str, workspace_id: str, expected: str
+) -> None:
+    assert qwen_base_url(region=region, workspace_id=workspace_id) == expected
+
+
+def test_qwen_rejects_incomplete_or_unsafe_endpoint_configuration() -> None:
+    for workspace_id in ("", "evil.example.com", "../metadata", "ws-test-"):
+        with pytest.raises(ProviderFailure):
+            qwen_base_url(region="singapore", workspace_id=workspace_id)

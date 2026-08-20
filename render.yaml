@@ -34,6 +34,8 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: PROVIDER_CREDENTIAL_ENCRYPTION_KEYS
+        generateValue: true
       - key: FRONTEND_ORIGIN
         sync: false
       - key: DJANGO_ALLOWED_HOSTS

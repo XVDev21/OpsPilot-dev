@@ -18,6 +18,7 @@
       },
       "error_code": null,
       "provider": "gemini",
+      "credential_source": "personal",
       "model": "gemini-contract-fixture",
       "intelligence": "fast",
       "prompt_version": "v2-provider-neutral",

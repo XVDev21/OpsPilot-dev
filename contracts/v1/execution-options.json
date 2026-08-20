@@ -1,7 +1,29 @@
 {
   "providers": [
-    { "id": "gemini", "label": "Gemini", "enabled": true },
-    { "id": "openai", "label": "OpenAI", "enabled": true }
+    {
+      "id": "gemini",
+      "label": "Gemini",
+      "description": "Google models with the default low-cost structured workflow route.",
+      "enabled": true,
+      "credentialSource": "platform",
+      "supportsPersonalKey": true
+    },
+    {
+      "id": "openai",
+      "label": "OpenAI",
+      "description": "OpenAI Responses models using the same validated workflow contracts.",
+      "enabled": true,
+      "credentialSource": "personal",
+      "supportsPersonalKey": true
+    },
+    {
+      "id": "qwen",
+      "label": "Qwen",
+      "description": "Alibaba Cloud Model Studio through its OpenAI-compatible API.",
+      "enabled": false,
+      "credentialSource": null,
+      "supportsPersonalKey": true
+    }
   ],
   "intelligenceLevels": [
     {

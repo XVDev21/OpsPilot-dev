@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Gauge,
   LoaderCircle,
+  Network,
   RadioTower,
   ShieldCheck,
   Sparkles,
@@ -26,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import type { AppUser } from "@/lib/auth/types";
 import { browserApi } from "@/lib/api/browser-client";
 import { cn } from "@/lib/utils";
+import { ProviderCredentialsPanel } from "@/features/settings/provider-credentials-panel";
 
 function PreferenceChoice<T extends string>({
   value,
@@ -174,8 +176,8 @@ export function SettingsPanel({ user }: { user: AppUser }) {
 
         <fieldset className="mt-6">
           <legend className="text-sm font-bold text-foreground">Provider</legend>
-          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini prioritizes the default low-cost path. OpenAI remains a compatible alternative.</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini prioritizes the default low-cost path. OpenAI and Qwen use the same validated result contracts.</p>
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <PreferenceChoice<AIProvider>
               value="gemini"
               current={provider}
@@ -193,6 +195,15 @@ export function SettingsPanel({ user }: { user: AppUser }) {
               icon={Bot}
               onSelect={setProvider}
               disabled={executionOptions.isSuccess && !enabledProviders.get("openai")}
+            />
+            <PreferenceChoice<AIProvider>
+              value="qwen"
+              current={provider}
+              title={executionOptions.isSuccess && !enabledProviders.get("qwen") ? "Qwen · Add a key" : "Qwen"}
+              description="Alibaba Cloud Model Studio route with server-pinned Qwen models."
+              icon={Network}
+              onSelect={setProvider}
+              disabled={executionOptions.isSuccess && !enabledProviders.get("qwen")}
             />
           </div>
         </fieldset>
@@ -235,6 +246,8 @@ export function SettingsPanel({ user }: { user: AppUser }) {
           </p>
         ) : null}
       </section>
+
+      <ProviderCredentialsPanel />
     </div>
   );
 }
