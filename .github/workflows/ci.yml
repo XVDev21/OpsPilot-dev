@@ -57,6 +57,7 @@ jobs:
       WORKOS_CLIENT_ID: client_ci_placeholder
       WORKOS_ISSUER: https://api.workos.com
       GEMINI_API_KEY: ci-placeholder-not-used-by-mocked-tests
+      PROVIDER_CREDENTIAL_ENCRYPTION_KEYS: ci-placeholder-provider-credential-key-at-least-32-characters
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
