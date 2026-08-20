@@ -1,8 +1,9 @@
-import { AlertTriangle, CheckCircle2, CircleHelp, Clock3, Search, UserRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, Clock3, Route, Search, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { BugTriageOutput } from "@/features/workflows/bug-triage/schema";
 import type { MeetingActionsOutput } from "@/features/workflows/meeting-actions/schema";
 import type { StatusUpdateOutput } from "@/features/workflows/status-update/schema";
+import { getSampleTeamMember } from "@/lib/collaboration/sample-team";
 
 function ResultSection({
   title,
@@ -39,6 +40,12 @@ function ResultList({ items }: { items: readonly string[] }) {
 
 export function BugResult({ output }: { output: BugTriageOutput }) {
   const confidence = Math.round(output.confidence * 100);
+  const owner = output.routing.ownerId ? getSampleTeamMember(output.routing.ownerId) : null;
+  const disposition = {
+    "product-defect": "Probable product defect",
+    "configuration-or-process": "Check settings or process first",
+    "needs-more-evidence": "Gather more evidence",
+  }[output.issueType];
   return (
     <div>
       <p className="text-base leading-7 font-semibold text-foreground">{output.summary}</p>
@@ -49,9 +56,23 @@ export function BugResult({ output }: { output: BugTriageOutput }) {
         <ResultList items={output.evidenceGaps} />
       </ResultSection>
       <ResultSection title="Likely category" icon={<Search className="size-4" />}>
-        <Badge tone="accent" className="normal-case tracking-normal">
-          {output.likelyCategory}
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="accent" className="normal-case tracking-normal">
+            {output.likelyCategory}
+          </Badge>
+          <Badge tone={output.issueType === "product-defect" ? "warning" : "primary"}>{disposition}</Badge>
+        </div>
+      </ResultSection>
+      <ResultSection title="Suggested routing" icon={<Route className="size-4" />}>
+        <div className="rounded-xl border border-border bg-surface-soft p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold capitalize text-foreground">{output.routing.team} review</p>
+            <span className="text-xs text-foreground-muted">
+              {owner ? `${owner.name} · ${owner.role}` : "Owner unassigned"}
+            </span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-foreground-muted">{output.routing.rationale}</p>
+        </div>
       </ResultSection>
       <ResultSection title="Recommended checks" icon={<Search className="size-4" />}>
         <ol className="grid gap-3">
@@ -82,9 +103,19 @@ export function BugResult({ output }: { output: BugTriageOutput }) {
 }
 
 export function MeetingResult({ output }: { output: MeetingActionsOutput }) {
+  const coordinator = output.followUpCoordinatorId
+    ? getSampleTeamMember(output.followUpCoordinatorId)
+    : null;
   return (
     <div>
       <p className="text-base leading-7 font-semibold text-foreground">{output.summary}</p>
+      <ResultSection title="Follow-up coordination" icon={<UserRound className="size-4" />}>
+        <p className="text-sm leading-6 text-foreground-muted">
+          {coordinator
+            ? `${coordinator.name} · ${coordinator.role} will coordinate unresolved follow-up in this sample workspace.`
+            : "No follow-up coordinator was selected. Action owners remain exactly as stated in the notes."}
+        </p>
+      </ResultSection>
       <ResultSection title="Decisions" icon={<CheckCircle2 className="size-4" />}>
         <ResultList items={output.decisions.length ? output.decisions : ["No explicit decisions were labeled."]} />
       </ResultSection>
@@ -122,6 +153,7 @@ export function MeetingResult({ output }: { output: MeetingActionsOutput }) {
 }
 
 export function StatusResult({ output }: { output: StatusUpdateOutput }) {
+  const author = output.authorId ? getSampleTeamMember(output.authorId) : null;
   const groups = [
     ["Completed", output.completed, "success"],
     ["In progress", output.inProgress, "primary"],
@@ -130,6 +162,16 @@ export function StatusResult({ output }: { output: StatusUpdateOutput }) {
   ] as const;
   return (
     <div>
+      {author ? (
+        <div className="mb-4 flex min-h-11 items-center gap-3 rounded-xl border border-border bg-surface-soft px-4 py-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-accent font-mono text-xs font-bold text-primary">
+            {author.initials}
+          </span>
+          <p className="text-sm text-foreground-muted">
+            Update supplied by <span className="font-semibold text-foreground">{author.name}</span> · {author.role}
+          </p>
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {groups.map(([title, items, tone]) => (
           <section key={title} className="rounded-xl border border-border bg-surface-soft p-4">

@@ -12,6 +12,12 @@
         "confirmedFacts": ["Small exports complete."],
         "evidenceGaps": ["No server-side logs were provided."],
         "likelyCategory": "Scale-dependent export processing",
+        "issueType": "product-defect",
+        "routing": {
+          "team": "engineering",
+          "ownerId": null,
+          "rationale": "Repeatable behavior warrants technical validation."
+        },
         "recommendedChecks": ["Compare small and large export job logs."],
         "confidence": 0.82,
         "humanReviewNotice": "An engineer must validate this triage."
@@ -21,7 +27,7 @@
       "credential_source": "personal",
       "model": "gemini-contract-fixture",
       "intelligence": "fast",
-      "prompt_version": "v2-provider-neutral",
+      "prompt_version": "v3-team-routing",
       "input_tokens": 101,
       "output_tokens": 53,
       "duration_ms": 842,

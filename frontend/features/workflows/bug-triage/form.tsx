@@ -2,27 +2,36 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
+import type { AppMode } from "@/components/providers/app-mode-provider";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { AppMode } from "@/components/providers/app-mode-provider";
 import {
   bugTriageInputSchema,
   bugTriageSampleInput,
   type BugTriageInput,
 } from "@/features/workflows/bug-triage/schema";
-import { FormSection, WorkflowFormShell } from "@/features/workflows/workflow-form-shell";
+import { CollaboratorSelect } from "@/features/workflows/collaborator-select";
+import type { WorkflowInputMode } from "@/features/workflows/shared-schema";
+import {
+  FormSection,
+  WorkflowFormShell,
+  WorkflowInputModeSwitch,
+} from "@/features/workflows/workflow-form-shell";
 
 const emptyInput: BugTriageInput = {
+  inputMode: "simple",
   title: "",
   affectedArea: "",
   observedBehavior: "",
   expectedBehavior: "",
-  evidence: [{ value: "" }],
+  evidence: [],
   settings: "",
   constraints: "",
+  triageOwnerId: "",
 };
 
 export function BugTriageForm({
@@ -32,11 +41,13 @@ export function BugTriageForm({
   onSubmitResult: (input: BugTriageInput) => Promise<void> | void;
   mode: AppMode;
 }) {
+  const [inputMode, setInputMode] = useState<WorkflowInputMode>("simple");
   const {
     register,
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<BugTriageInput>({
     resolver: zodResolver(bugTriageInputSchema),
@@ -44,10 +55,28 @@ export function BugTriageForm({
   });
   const { fields, append, remove } = useFieldArray({ control, name: "evidence" });
 
+  function changeInputMode(nextMode: WorkflowInputMode) {
+    setInputMode(nextMode);
+    setValue("inputMode", nextMode, { shouldDirty: true });
+  }
+
+  function resetForm() {
+    reset(emptyInput);
+    setInputMode("simple");
+  }
+
+  function loadSample() {
+    reset(bugTriageSampleInput);
+    setInputMode("advanced");
+  }
+
   return (
     <WorkflowFormShell mode={mode}>
       <form onSubmit={handleSubmit(onSubmitResult)} noValidate>
-        <FormSection title="Issue" description="Describe the observed problem without diagnosing it yet.">
+        <input type="hidden" {...register("inputMode")} />
+        <WorkflowInputModeSwitch value={inputMode} onChange={changeInputMode} />
+
+        <FormSection title="Issue" description="Start with the symptom. OpsPilot will keep diagnosis separate from evidence.">
           <Field id="bug-title" label="Issue title" error={errors.title?.message}>
             <Input
               id="bug-title"
@@ -55,15 +84,6 @@ export function BugTriageForm({
               aria-invalid={Boolean(errors.title)}
               aria-describedby={errors.title ? "bug-title-error" : undefined}
               {...register("title")}
-            />
-          </Field>
-          <Field id="bug-area" label="Affected area" error={errors.affectedArea?.message}>
-            <Input
-              id="bug-area"
-              placeholder="e.g. Analytics exports"
-              aria-invalid={Boolean(errors.affectedArea)}
-              aria-describedby={errors.affectedArea ? "bug-area-error" : undefined}
-              {...register("affectedArea")}
             />
           </Field>
           <Field
@@ -74,114 +94,120 @@ export function BugTriageForm({
           >
             <Textarea
               id="bug-observed"
+              className="min-h-40"
               placeholder="Describe what the user or system did..."
               aria-invalid={Boolean(errors.observedBehavior)}
               aria-describedby={
-                errors.observedBehavior ? "bug-observed-description bug-observed-error" : "bug-observed-description"
+                errors.observedBehavior
+                  ? "bug-observed-description bug-observed-error"
+                  : "bug-observed-description"
               }
               {...register("observedBehavior")}
             />
           </Field>
         </FormSection>
 
-        <FormSection title="Expectation">
-          <Field
-            id="bug-expected"
-            label="Expected behavior"
-            error={errors.expectedBehavior?.message}
-          >
-            <Textarea
-              id="bug-expected"
-              placeholder="Describe the correct outcome..."
-              aria-invalid={Boolean(errors.expectedBehavior)}
-              aria-describedby={errors.expectedBehavior ? "bug-expected-error" : undefined}
-              {...register("expectedBehavior")}
-            />
-          </Field>
-        </FormSection>
+        {inputMode === "advanced" ? (
+          <>
+            <FormSection
+              title="Expected outcome"
+              description="These details help separate configuration friction from a probable product defect."
+            >
+              <Field id="bug-area" label="Affected area" optional>
+                <Input
+                  id="bug-area"
+                  placeholder="e.g. Analytics exports"
+                  {...register("affectedArea")}
+                />
+              </Field>
+              <Field id="bug-expected" label="Expected behavior" optional>
+                <Textarea
+                  id="bug-expected"
+                  placeholder="Describe the correct outcome..."
+                  {...register("expectedBehavior")}
+                />
+              </Field>
+            </FormSection>
 
-        <FormSection
-          title="Evidence"
-          description="Add only repeatable observations, logs, or comparisons you already know."
-        >
-          <div className="grid gap-3">
-            {fields.map((field, index) => {
-              const fieldError = errors.evidence?.[index]?.value?.message;
-              const id = `bug-evidence-${index}`;
-              return (
-                <div key={field.id} className="grid grid-cols-[1fr_auto] items-start gap-2">
-                  <Field
-                    id={id}
-                    label={`Evidence ${index + 1}`}
-                    error={fieldError}
-                    className="min-w-0"
-                  >
-                    <Input
-                      id={id}
-                      placeholder="e.g. Smaller exports finish successfully"
-                      aria-invalid={Boolean(fieldError)}
-                      aria-describedby={fieldError ? `${id}-error` : undefined}
-                      {...register(`evidence.${index}.value`)}
-                    />
-                  </Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="mt-6"
-                    onClick={() => remove(index)}
-                    disabled={fields.length === 1}
-                    aria-label={`Remove evidence ${index + 1}`}
-                  >
-                    <Trash2 aria-hidden="true" className="size-4" />
-                  </Button>
+            <FormSection
+              title="Evidence"
+              description="Add repeatable observations, logs, or comparisons. More concrete evidence can increase confidence."
+            >
+              {fields.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border-strong p-4 text-sm leading-6 text-foreground-muted">
+                  No evidence points yet. The result will stay conservative and route the issue for more investigation.
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {fields.map((field, index) => {
+                    const fieldError = errors.evidence?.[index]?.value?.message;
+                    const id = `bug-evidence-${index}`;
+                    return (
+                      <div key={field.id} className="grid grid-cols-[1fr_auto] items-start gap-2">
+                        <Field id={id} label={`Evidence ${index + 1}`} error={fieldError} className="min-w-0">
+                          <Input
+                            id={id}
+                            placeholder="e.g. Smaller exports finish successfully"
+                            aria-invalid={Boolean(fieldError)}
+                            aria-describedby={fieldError ? `${id}-error` : undefined}
+                            {...register(`evidence.${index}.value`)}
+                          />
+                        </Field>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mt-6"
+                          onClick={() => remove(index)}
+                          aria-label={`Remove evidence ${index + 1}`}
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-          <Button
-            type="button"
-            variant="quiet"
-            size="sm"
-            className="w-fit"
-            onClick={() => append({ value: "" })}
-          >
-            <Plus aria-hidden="true" className="size-4" /> Add evidence
-          </Button>
-        </FormSection>
+              )}
+              <Button type="button" variant="quiet" size="sm" className="w-fit" onClick={() => append({ value: "" })}>
+                <Plus aria-hidden="true" className="size-4" /> Add evidence
+              </Button>
+            </FormSection>
 
-        <details className="group border-b border-border">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between px-5 text-sm font-bold text-foreground marker:hidden sm:px-6">
-            Advanced context
-            <span aria-hidden="true" className="text-lg font-normal text-foreground-soft group-open:rotate-45">
-              +
-            </span>
-          </summary>
-          <div className="grid gap-5 px-5 pb-6 sm:px-6">
-            <Field id="bug-settings" label="Relevant settings" optional>
-              <Input
-                id="bug-settings"
-                placeholder="Feature flags, filters, browser, environment..."
-                {...register("settings")}
+            <FormSection
+              title="Routing and guardrails"
+              description="Choose a sample review owner and record conditions the investigation should respect."
+            >
+              <CollaboratorSelect
+                id="bug-triage-owner"
+                label="Triage owner"
+                description="The selected sample collaborator will be echoed as the review owner, not treated as a real account."
+                registration={register("triageOwnerId")}
               />
-            </Field>
-            <Field id="bug-constraints" label="Constraints" optional>
-              <Textarea
-                id="bug-constraints"
-                placeholder="Safety boundaries or environments to avoid..."
-                {...register("constraints")}
-              />
-            </Field>
-          </div>
-        </details>
+              <Field id="bug-settings" label="Relevant settings" optional>
+                <Input
+                  id="bug-settings"
+                  placeholder="Feature flags, filters, browser, environment..."
+                  {...register("settings")}
+                />
+              </Field>
+              <Field id="bug-constraints" label="Constraints" optional>
+                <Textarea
+                  id="bug-constraints"
+                  placeholder="Safety boundaries or environments to avoid..."
+                  {...register("constraints")}
+                />
+              </Field>
+            </FormSection>
+          </>
+        ) : null}
 
         <div className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => reset(emptyInput)} disabled={isSubmitting}>
+            <Button type="button" variant="ghost" onClick={resetForm} disabled={isSubmitting}>
               <RotateCcw aria-hidden="true" className="size-4" /> Reset
             </Button>
-            <Button type="button" variant="secondary" onClick={() => reset(bugTriageSampleInput)} disabled={isSubmitting}>
-              Load sample
+            <Button type="button" variant="secondary" onClick={loadSample} disabled={isSubmitting}>
+              Load advanced sample
             </Button>
           </div>
           <Button type="submit" size="lg" disabled={isSubmitting}>

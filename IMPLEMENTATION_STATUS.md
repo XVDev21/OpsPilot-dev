@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Live Mode + personal provider integrations
-**Status:** Implementation verified locally; production migration/deployment and signed-in Live smoke pending
+**Current milestone:** Live Mode reliability + team-ready workflow intake
+**Status:** Hotfix verified locally; Render issuer update, deployment, and signed-in Live smoke pending merge
 
 ## Milestones
 
@@ -13,8 +13,46 @@
 - [x] Backend Part 1 - Django foundation
 - [x] Backend Part 2 - provider-neutral workflow engine
 - [x] Live Mode - encrypted personal Gemini/OpenAI/Qwen integrations
+- [x] Simple/Advanced workflow intake + fictional sample delivery pod
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Live Mode reliability + team-ready workflow intake hotfix
+
+- [x] preserve WorkOS's exact slash-terminated access-token issuer and regression-test the previous
+  production `InvalidIssuerError`
+- [x] restrict shared platform spending to Gemini with `AI_PLATFORM_PROVIDERS=gemini`; OpenAI and
+  Qwen remain vetted personal-key integrations only
+- [x] reset the versioned browser provider preference to Gemini so an unavailable historical
+  OpenAI choice cannot surprise users after deployment
+- [x] keep encrypted per-user API-key create, rotate, status, and delete controls for Gemini,
+  OpenAI, and Qwen, including clear personal-key and billing guidance
+- [x] make Simple input the default for Bug Triage, Meeting Actions, and Status Update
+- [x] reveal evidence, routing, ownership, participants, audience, and delivery controls only in
+  Advanced input
+- [x] add five clearly fictional `example.invalid` sample collaborators spanning operations,
+  support, development consulting, software engineering, and quality
+- [x] expose the sample pod in authenticated and public Demo Mode navigation without creating
+  accounts, invitations, access grants, or notifications
+- [x] classify deterministic issue intake as product defect, configuration/process, or
+  needs-more-evidence and route it to engineering, support, or operations respectively
+- [x] preserve selected triage owner, meeting coordinator, and status author in validated Live and
+  Demo result contracts; models are explicitly forbidden from inventing collaborator IDs
+
+```text
+backend Ruff            PASS
+Django checks           PASS
+backend tests           PASS - 73 tests, 94.41% coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 13 files, 38 tests
+frontend build          PASS - Next.js 16.3, 29 generated routes/assets
+browser verification    PASS - 1440 desktop, 390x844 mobile, light/dark, all three workflows,
+                          Simple/Advanced states, ownership/routing results, zero overflow,
+                          zero console warnings/errors
+production Live smoke   PENDING - merge, deploy, set WORKOS_ISSUER=https://api.workos.com/,
+                          then run signed-in Gemini workflow through history
+```
 
 ## Live Mode + personal provider integrations
 
@@ -247,16 +285,17 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 
 ## Next-phase prerequisites
 
-- Sync the Render Blueprint or add a new high-entropy `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` secret to
-  the existing API service before this backend release. Do not send the value in chat.
-- Deploy the backend first so migrations create `provider_credentials` and add
-  `workflow_runs.credential_source`; deploy the frontend after the API is healthy.
-- Keep the existing Gemini platform key as the default low-cost route. OpenAI billing/quota is needed
-  only for an OpenAI production smoke.
+- After this hotfix merges, set Render `WORKOS_ISSUER` to the exact value
+  `https://api.workos.com/`, deploy the backend, and clear no encryption keys.
+- Keep `AI_PLATFORM_PROVIDERS=gemini`. The existing Gemini platform key remains the default
+  low-cost route; the platform OpenAI key is intentionally unused and can be removed from Render.
+- Deploy the backend before the frontend, confirm health, then exercise WorkOS → Next.js BFF →
+  Django → Gemini → private history with a signed-in production account.
+- OpenAI requires a funded personal API project and is not required for this release.
 - Qwen requires a region-specific key and, for Singapore or Beijing, the Alibaba Model Studio
   workspace ID. Add these through Settings as a personal credential when ready; no Qwen secret is
   required to merge this change.
-- Sign in once after deployment and run one disposable-key smoke for each enabled provider through
+- Sign in once after deployment and run one disposable-key smoke for each personally enabled provider through
   WorkOS -> Next.js BFF -> Django -> provider -> history, then delete the disposable credential and
   inspect Render/Vercel logs for secret or prompt leakage.
 - Preserve older encryption keys after rotation until existing credentials have been re-saved or a

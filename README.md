@@ -33,14 +33,15 @@ Django
 Django Ninja
 Pydantic
 PostgreSQL production
-Gemini, OpenAI, and Qwen provider adapters
+Gemini, OpenAI, and Qwen provider adapters with an explicit platform-provider allowlist
 Encrypted per-user provider credentials
 ```
 
 The frontend and Django API are implemented. Authenticated Live Mode executes the three structured
 workflows through Gemini, OpenAI, or Qwen; deterministic Demo Mode remains backend-independent.
-Platform credentials can be configured on the API, while an authenticated user can add an encrypted
-personal credential that overrides the platform key only for that provider and account.
+Gemini is the only platform-funded provider in the current release. An authenticated user can add an
+encrypted personal Gemini, OpenAI, or Qwen credential for that provider and account; OpenAI requires
+a separately funded API project.
 
 ## Local development
 

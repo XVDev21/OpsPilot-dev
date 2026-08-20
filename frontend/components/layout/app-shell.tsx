@@ -14,6 +14,7 @@ import {
   Menu,
   RadioTower,
   Settings,
+  UsersRound,
   Workflow,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutGrid, exact: true },
   { href: "/app/workflows", label: "Workflows", icon: Workflow, exact: false },
+  { href: "/app/team", label: "Team", icon: UsersRound, exact: false },
   { href: "/app/history", label: "History", icon: History, exact: false },
   { href: "/app/settings", label: "Settings", icon: Settings, exact: false },
 ] as const satisfies readonly {

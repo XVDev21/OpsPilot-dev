@@ -108,13 +108,31 @@ Gate: staging passes the complete sign-in → workflow → history → deletion 
    retention cron is deferred while expired runs remain hidden by API policy and are purged on deploy.
 4. Provider/model policy is server-owned and uses pinned stable model IDs.
 5. Gemini Efficient is the default low-cost/low-latency route; Balanced and Deep are optional.
-6. OpenAI remains an optional compatible provider using the same workflow contracts.
+6. OpenAI remains an optional personal-key provider using the same workflow contracts; Gemini is
+   the only platform-funded provider for the current hobby release.
 7. Initial live limits are five runs per minute and 30 per rolling day per account.
+
+## Initiative 8 — Collaboration and assignment integrity
+
+- Keep the first release personal-first while representing delivery handoffs with explicitly
+  fictional sample profiles and non-routable `example.invalid` addresses.
+- Treat sample selections as workflow context only; they do not create identities, grant access,
+  send notifications, or imply that work was assigned.
+- Distinguish configuration/process reports from evidence-backed product defects before suggesting
+  engineering work.
+- Preserve only user-selected collaborator identifiers; providers must never invent an owner,
+  coordinator, author, member, or role.
+- Introduce real collaboration later behind an organization-scoped membership model with WorkOS
+  organization identity, invitation states, least-privilege roles, auditable assignments, and
+  per-workspace data isolation.
+
+Gate: all three workflows remain useful in Simple Mode, Advanced ownership is contract-validated,
+fictional fixtures are unmistakable, and no sample action produces a real authorization side effect.
 
 ## Next initiatives after Backend Part 2
 
-1. Complete the signed-in browser path from WorkOS through the Next.js BFF to Django and both
-   providers, recording latency, token usage, and result-schema validity for golden inputs.
+1. Complete the signed-in browser path from WorkOS through the Next.js BFF to Django and Gemini,
+   recording latency, token usage, and result-schema validity for golden inputs.
 2. Deploy the Vercel frontend and Render backend Blueprint, bind final service origins, register the
    production WorkOS callback, and run the release journey before promoting production.
 3. Add privacy self-service for full account export and account erasure before paid launch.

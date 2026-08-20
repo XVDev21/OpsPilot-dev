@@ -16,7 +16,7 @@ def test_workflow_metadata_matches_the_three_product_jobs(authenticated_client: 
         "meeting-actions",
         "status-update",
     ]
-    assert all(workflow["promptVersion"] == "v2-provider-neutral" for workflow in response.json())
+    assert all(workflow["promptVersion"] == "v3-team-routing" for workflow in response.json())
 
 
 def test_registry_has_input_and_output_schemas() -> None:
@@ -34,6 +34,7 @@ def test_bug_triage_input_enforces_final_frontend_validation_contract() -> None:
         schema.model_validate(
             {
                 "title": "No",
+                "inputMode": "simple",
                 "affectedArea": "A",
                 "observedBehavior": "short",
                 "expectedBehavior": "short",

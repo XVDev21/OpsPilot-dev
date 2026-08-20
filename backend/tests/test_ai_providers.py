@@ -27,6 +27,12 @@ VALID_OUTPUT = {
     "confirmedFacts": ["Small exports complete."],
     "evidenceGaps": ["Logs are missing."],
     "likelyCategory": "Export processing",
+    "issueType": "product-defect",
+    "routing": {
+        "team": "engineering",
+        "ownerId": None,
+        "rationale": "Repeatable behavior warrants technical validation.",
+    },
     "recommendedChecks": ["Review export job logs."],
     "confidence": 0.7,
     "humanReviewNotice": "Review is required.",
@@ -230,24 +236,39 @@ def test_provider_registry_keeps_keys_and_models_server_owned(
 
     sentinel = object()
     monkeypatch.setattr("ai.providers.registry.GeminiProvider", lambda **kwargs: sentinel)
-    with override_settings(GEMINI_API_KEY="secret"):
+    with override_settings(GEMINI_API_KEY="secret", AI_PLATFORM_PROVIDERS=["gemini"]):
         assert provider_is_enabled("gemini")
         resolved = get_provider(provider="gemini", user=user)
         assert resolved.adapter is sentinel
         assert resolved.credential_source == "platform"
 
     monkeypatch.setattr("ai.providers.registry.OpenAIProvider", lambda **kwargs: sentinel)
-    with override_settings(OPENAI_API_KEY="secret"):
+    with override_settings(OPENAI_API_KEY="secret", AI_PLATFORM_PROVIDERS=["openai"]):
         assert provider_is_enabled("openai")
         assert get_provider(provider="openai", user=user).adapter is sentinel
 
     monkeypatch.setattr("ai.providers.registry.QwenProvider", lambda **kwargs: sentinel)
-    with override_settings(QWEN_API_KEY="secret", QWEN_REGION="us", QWEN_WORKSPACE_ID=""):
+    with override_settings(
+        QWEN_API_KEY="secret",
+        QWEN_REGION="us",
+        QWEN_WORKSPACE_ID="",
+        AI_PLATFORM_PROVIDERS=["qwen"],
+    ):
         assert provider_is_enabled("qwen")
         assert get_provider(provider="qwen", user=user).adapter is sentinel
 
     assert model_for("gemini", "fast")
     assert max_output_tokens_for("high") == 3200
+
+
+@pytest.mark.django_db
+def test_platform_provider_key_is_ignored_when_provider_is_not_allowlisted() -> None:
+    user = AppUser.objects.create(workos_user_id="provider-policy-user")
+
+    with override_settings(OPENAI_API_KEY="funded-looking-key", AI_PLATFORM_PROVIDERS=["gemini"]):
+        assert not provider_is_enabled("openai")
+        with pytest.raises(ProviderFailure):
+            get_provider(provider="openai", user=user)
 
 
 @pytest.mark.django_db

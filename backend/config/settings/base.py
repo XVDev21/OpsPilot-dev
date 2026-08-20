@@ -101,7 +101,7 @@ CORS_ALLOW_CREDENTIALS = False
 CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN] if FRONTEND_ORIGIN else []
 
 WORKOS_CLIENT_ID = os.getenv("WORKOS_CLIENT_ID", "")
-WORKOS_ISSUER = os.getenv("WORKOS_ISSUER", "https://api.workos.com").rstrip("/")
+WORKOS_ISSUER = os.getenv("WORKOS_ISSUER", "https://api.workos.com/").strip()
 WORKOS_JWKS_URL = os.getenv("WORKOS_JWKS_URL", "")
 WORKOS_JWKS_CACHE_SECONDS = int(os.getenv("WORKOS_JWKS_CACHE_SECONDS", "300"))
 
@@ -111,6 +111,7 @@ QWEN_API_KEY = os.getenv("QWEN_API_KEY", "").strip()
 QWEN_REGION = os.getenv("QWEN_REGION", "singapore").strip().lower()
 QWEN_WORKSPACE_ID = os.getenv("QWEN_WORKSPACE_ID", "").strip()
 PROVIDER_CREDENTIAL_ENCRYPTION_KEYS = env_list("PROVIDER_CREDENTIAL_ENCRYPTION_KEYS")
+AI_PLATFORM_PROVIDERS = env_list("AI_PLATFORM_PROVIDERS", "gemini")
 AI_DEFAULT_PROVIDER = os.getenv("AI_DEFAULT_PROVIDER", "gemini").strip().lower()
 AI_DEFAULT_INTELLIGENCE = os.getenv("AI_DEFAULT_INTELLIGENCE", "fast").strip().lower()
 AI_REQUEST_TIMEOUT_SECONDS = int(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "30"))
@@ -143,6 +144,10 @@ AI_MAX_OUTPUT_TOKENS = {
 
 if AI_DEFAULT_PROVIDER not in AI_MODEL_MAP:
     raise ImproperlyConfigured("AI_DEFAULT_PROVIDER must be 'gemini', 'openai', or 'qwen'.")
+if any(provider not in AI_MODEL_MAP for provider in AI_PLATFORM_PROVIDERS):
+    raise ImproperlyConfigured(
+        "AI_PLATFORM_PROVIDERS may contain only 'gemini', 'openai', or 'qwen'."
+    )
 if AI_DEFAULT_INTELLIGENCE not in AI_MAX_OUTPUT_TOKENS:
     raise ImproperlyConfigured("AI_DEFAULT_INTELLIGENCE must be 'fast', 'balanced', or 'high'.")
 if (

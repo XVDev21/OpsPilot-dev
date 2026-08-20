@@ -176,7 +176,7 @@ export function SettingsPanel({ user }: { user: AppUser }) {
 
         <fieldset className="mt-6">
           <legend className="text-sm font-bold text-foreground">Provider</legend>
-          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini prioritizes the default low-cost path. OpenAI and Qwen use the same validated result contracts.</p>
+          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini is the platform-funded low-cost path. OpenAI and Qwen activate only after you connect your own encrypted API key.</p>
           <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <PreferenceChoice<AIProvider>
               value="gemini"
@@ -190,8 +190,8 @@ export function SettingsPanel({ user }: { user: AppUser }) {
             <PreferenceChoice<AIProvider>
               value="openai"
               current={provider}
-              title={executionOptions.isSuccess && !enabledProviders.get("openai") ? "OpenAI · Unavailable" : "OpenAI"}
-              description="Alternate provider route using the same validated OpsPilot result contracts."
+              title={executionOptions.isSuccess && !enabledProviders.get("openai") ? "OpenAI · Add a key" : "OpenAI"}
+              description="Optional personal-key route. Your OpenAI project must have available API billing or credits."
               icon={Bot}
               onSelect={setProvider}
               disabled={executionOptions.isSuccess && !enabledProviders.get("openai")}

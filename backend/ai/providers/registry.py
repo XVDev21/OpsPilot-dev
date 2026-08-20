@@ -83,6 +83,8 @@ def _platform_key(provider: ProviderName) -> str:
 
 
 def _platform_provider_is_enabled(provider: ProviderName) -> bool:
+    if provider not in settings.AI_PLATFORM_PROVIDERS:
+        return False
     if not _platform_key(provider):
         return False
     if provider != "qwen":
@@ -118,7 +120,7 @@ def get_provider(*, provider: ProviderName, user: AppUser) -> ResolvedProvider:
         qwen_region = personal.endpoint_region
         qwen_workspace_id = personal.workspace_id
     else:
-        api_key = _platform_key(provider)
+        api_key = _platform_key(provider) if _platform_provider_is_enabled(provider) else ""
         credential_source = "platform"
         credential_id = None
         qwen_region = settings.QWEN_REGION

@@ -27,24 +27,80 @@ function sentence(value: string) {
 }
 
 function makeBugResult(input: BugTriageInput) {
+  const affectedArea = input.affectedArea?.trim() || "the reported workflow";
+  const expectedBehavior =
+    input.expectedBehavior?.trim() || "Confirm the intended behavior with the workflow owner.";
+  const evidence = input.evidence ?? [];
+  const issueContext = [input.title, input.observedBehavior, input.settings]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const hasConfigurationSignal =
+    /\b(setting|settings|configuration|configured|permission|permissions|role|roles|filter|feature flag)\b/.test(
+      issueContext,
+    );
+  const hasProductDefectSignal =
+    /\b(crash|crashes|crashed|error|errors|exception|fails|failed|failure|stalls|stalled|broken|timeout|500)\b/.test(
+      issueContext,
+    );
+  const issueType =
+    evidence.length >= 2 && hasProductDefectSignal
+      ? "product-defect"
+      : hasConfigurationSignal
+        ? "configuration-or-process"
+        : evidence.length >= 2
+          ? "product-defect"
+          : "needs-more-evidence";
+  const team =
+    issueType === "product-defect"
+      ? "engineering"
+      : issueType === "configuration-or-process"
+        ? "support"
+        : "operations";
+  const routingRationale = {
+    "product-defect": "The supplied evidence indicates repeatable product behavior that warrants technical validation.",
+    "configuration-or-process":
+      "The report contains a settings or permissions signal, so validate configuration before opening engineering work.",
+    "needs-more-evidence":
+      "The intake is useful but needs a repeatable case or another concrete signal before assigning a defect.",
+  }[issueType];
+
   return bugTriageOutputSchema.parse({
-    summary: `${input.title} affects ${input.affectedArea}. ${sentence(input.observedBehavior)}`,
+    summary: `${input.title} affects ${affectedArea}. ${sentence(input.observedBehavior)}`,
     confirmedFacts: [
-      `Affected area: ${input.affectedArea}.`,
+      ...(input.affectedArea ? [`Affected area: ${input.affectedArea}.`] : []),
       `Observed: ${sentence(input.observedBehavior)}`,
-      ...input.evidence.map((item) => sentence(item.value)),
+      ...evidence.map((item) => sentence(item.value)),
     ],
     evidenceGaps: [
       "No server-side logs, trace, or correlated request identifier was included.",
       "The smallest reliable reproduction case is not yet isolated.",
     ],
-    likelyCategory: "Behavioral defect requiring technical validation",
+    likelyCategory:
+      issueType === "product-defect"
+        ? "Behavioral defect requiring technical validation"
+        : issueType === "configuration-or-process"
+          ? "Configuration or operating-process check"
+          : "Unclassified report awaiting evidence",
+    issueType,
+    routing: {
+      team,
+      ownerId: input.triageOwnerId || null,
+      rationale: routingRationale,
+    },
     recommendedChecks: [
-      `Reproduce the issue in ${input.affectedArea} using the smallest safe test case.`,
+      `Reproduce the issue in ${affectedArea} using the smallest safe test case.`,
       "Correlate the browser observation with server logs or a trace identifier.",
-      `Verify the expected outcome: ${sentence(input.expectedBehavior)}`,
+      `Verify the expected outcome: ${sentence(expectedBehavior)}`,
     ],
-    confidence: Math.min(0.9, 0.58 + input.evidence.length * 0.07),
+    confidence: Math.min(
+      0.9,
+      0.44 +
+        evidence.length * 0.07 +
+        (input.expectedBehavior ? 0.05 : 0) +
+        (input.affectedArea ? 0.04 : 0) +
+        (input.inputMode === "advanced" ? 0.04 : 0),
+    ),
     humanReviewNotice:
       "This deterministic demo organizes the supplied evidence; it does not diagnose production code. An engineer should validate the category and checks.",
   });
@@ -82,6 +138,7 @@ function makeMeetingResult(input: MeetingActionsInput) {
       openQuestions.length > 0
         ? ["Open questions still require an explicit decision or owner."]
         : ["No open questions were explicitly labeled in the supplied notes."],
+    followUpCoordinatorId: input.coordinatorId || null,
   });
 }
 
@@ -123,6 +180,7 @@ function makeStatusResult(input: StatusUpdateInput) {
   }[input.audience];
 
   return statusUpdateOutputSchema.parse({
+    authorId: input.authorId || null,
     completed,
     inProgress,
     blocked,
