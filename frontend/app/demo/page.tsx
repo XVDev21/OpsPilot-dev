@@ -22,9 +22,14 @@ export default function DemoOverviewPage() {
           </h1>
           <p className="mt-3 text-base text-foreground-muted">Start with the task—not the prompt.</p>
         </div>
-        <Link href="/demo/workflows" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-primary hover:text-primary-hover">
-          View workflow catalog <ArrowRight aria-hidden="true" className="size-4" />
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link href="/demo/team" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-foreground-muted hover:text-foreground">
+            Meet the sample team
+          </Link>
+          <Link href="/demo/workflows" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-primary hover:text-primary-hover">
+            View workflow catalog <ArrowRight aria-hidden="true" className="size-4" />
+          </Link>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-3">

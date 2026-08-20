@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, FlaskConical, Home, Menu, Workflow } from "lucide-react";
+import { ChevronRight, FlaskConical, Home, Menu, UsersRound, Workflow } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/logo-mark";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 const demoNav = [
   { href: "/demo", label: "Overview", icon: Home, exact: true },
   { href: "/demo/workflows", label: "Workflows", icon: Workflow, exact: false },
+  { href: "/demo/team", label: "Sample team", icon: UsersRound, exact: false },
 ] as const;
 
 function DemoNavigation({ mobile = false }: { mobile?: boolean }) {

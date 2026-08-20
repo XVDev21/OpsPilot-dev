@@ -16,7 +16,7 @@ interface AppModeContextValue {
 }
 
 const modeStorageKey = "opspilot:mode:v1";
-const providerStorageKey = "opspilot:provider:v1";
+const providerStorageKey = "opspilot:provider:v2";
 const intelligenceStorageKey = "opspilot:intelligence:v1";
 const preferenceChangeEvent = "opspilot:preferences-change";
 const AppModeContext = createContext<AppModeContextValue | null>(null);

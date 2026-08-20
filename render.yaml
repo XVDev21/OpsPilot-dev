@@ -29,10 +29,8 @@ services:
       - key: WORKOS_CLIENT_ID
         sync: false
       - key: WORKOS_ISSUER
-        value: https://api.workos.com
+        value: https://api.workos.com/
       - key: GEMINI_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
         sync: false
       - key: PROVIDER_CREDENTIAL_ENCRYPTION_KEYS
         generateValue: true
@@ -41,6 +39,8 @@ services:
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
       - key: AI_DEFAULT_PROVIDER
+        value: gemini
+      - key: AI_PLATFORM_PROVIDERS
         value: gemini
       - key: AI_DEFAULT_INTELLIGENCE
         value: fast

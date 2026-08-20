@@ -27,17 +27,17 @@ API service secrets:
 
 ```text
 WORKOS_CLIENT_ID
+WORKOS_ISSUER=https://api.workos.com/
 GEMINI_API_KEY
-OPENAI_API_KEY (optional)
-QWEN_API_KEY (optional platform key)
-QWEN_REGION (required only with a platform Qwen key)
-QWEN_WORKSPACE_ID (required for Singapore or Beijing platform Qwen keys)
+AI_PLATFORM_PROVIDERS=gemini
 FRONTEND_ORIGIN
 DJANGO_ALLOWED_HOSTS
 ```
 
 Render generates `DJANGO_SECRET_KEY` and `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS`, then injects
 `DATABASE_URL` from `opspilot-db`. Never reuse `DJANGO_SECRET_KEY` as the provider-credential key.
+Keep the trailing slash in `WORKOS_ISSUER`; JWT issuer comparison is intentionally exact. OpenAI and
+Qwen are personal-key integrations in this release and do not need platform secrets on Render.
 
 ## Values Vercel requires
 
@@ -82,7 +82,7 @@ Keep `http://localhost:3000/auth/callback` as a separate local redirect URI.
 1. Confirm `GET https://<api-host>/api/v1/health` returns healthy after any cold start.
 2. Open the Vercel frontend, sign in with Google, and confirm the personal workspace loads.
 3. Run one Efficient Gemini workflow and verify token usage and history.
-4. Run one OpenAI workflow only if the optional key and quota are configured.
+4. Run OpenAI only if the signed-in user connected a funded personal API key; it is not a release gate.
 5. In Settings, save a disposable personal credential, confirm its masked fingerprint, run its
    provider, then delete the credential and confirm workspace fallback/unavailable status.
 6. Run Qwen only after selecting the API-key region and, for Singapore or Beijing, its Model Studio

@@ -20,7 +20,7 @@ describe("Demo Mode workflow runner", () => {
   ] as const)("loads sample input and renders the %s result", async (workflowId, action, expected) => {
     const user = userEvent.setup();
     renderRunner(workflowId);
-    await user.click(screen.getByRole("button", { name: "Load sample" }));
+    await user.click(screen.getByRole("button", { name: /Load (advanced )?sample/ }));
     await user.click(screen.getByRole("button", { name: action }));
     expect(await screen.findByText(expected)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy result" })).toBeInTheDocument();

@@ -36,7 +36,7 @@ const providerInfo = {
     keyPlaceholder: "Google AI Studio API key",
   },
   openai: {
-    label: "OpenAI",
+    label: "OpenAI · Personal key",
     icon: Bot,
     helpUrl: "https://platform.openai.com/api-keys",
     keyPlaceholder: "OpenAI project API key",
@@ -340,7 +340,7 @@ export function ProviderCredentialsPanel() {
             Bring your own model access
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground-muted">
-            Personal keys are encrypted by Django before storage, never returned by the API, and only decrypted for your authenticated Live Mode run. A personal key overrides the workspace key for that provider.
+            Connect Gemini, OpenAI, or Qwen as needed. Personal keys are encrypted by Django before storage, never returned by the API, and only decrypted for your authenticated Live Mode run. Gemini is the only shared platform provider in this release.
           </p>
         </div>
         <span className="grid size-11 place-items-center rounded-xl bg-surface-accent text-primary">

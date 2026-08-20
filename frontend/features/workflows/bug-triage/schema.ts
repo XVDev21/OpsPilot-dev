@@ -1,8 +1,14 @@
 import { z } from "zod";
+import {
+  collaboratorIdSchema,
+  optionalCollaboratorIdSchema,
+  workflowInputModeSchema,
+} from "@/features/workflows/shared-schema";
 
 export const bugTriageInputSchema = z.object({
+  inputMode: workflowInputModeSchema,
   title: z.string().trim().min(3, "Give the issue a short, specific title.").max(200),
-  affectedArea: z.string().trim().min(2, "Name the affected product area.").max(160),
+  affectedArea: z.string().trim().max(160).optional(),
   observedBehavior: z
     .string()
     .trim()
@@ -11,18 +17,18 @@ export const bugTriageInputSchema = z.object({
   expectedBehavior: z
     .string()
     .trim()
-    .min(12, "Describe what should have happened.")
-    .max(3000, "Keep the expected behavior under 3,000 characters."),
+    .max(3000, "Keep the expected behavior under 3,000 characters.")
+    .optional(),
   evidence: z
     .array(
       z.object({
         value: z.string().trim().min(3, "Add a useful evidence point or remove this row.").max(1000),
       }),
     )
-    .min(1, "Add at least one known evidence point.")
     .max(12, "Keep evidence to the 12 most useful points."),
   settings: z.string().trim().max(2000).optional(),
   constraints: z.string().trim().max(2000).optional(),
+  triageOwnerId: optionalCollaboratorIdSchema,
 });
 
 export const bugTriageOutputSchema = z.object({
@@ -30,6 +36,12 @@ export const bugTriageOutputSchema = z.object({
   confirmedFacts: z.array(z.string().min(1)),
   evidenceGaps: z.array(z.string().min(1)),
   likelyCategory: z.string().min(1),
+  issueType: z.enum(["product-defect", "configuration-or-process", "needs-more-evidence"]),
+  routing: z.object({
+    team: z.enum(["operations", "support", "engineering"]),
+    ownerId: collaboratorIdSchema.nullable(),
+    rationale: z.string().min(1),
+  }),
   recommendedChecks: z.array(z.string().min(1)).min(1),
   confidence: z.number().min(0).max(1),
   humanReviewNotice: z.string().min(1),
@@ -39,6 +51,7 @@ export type BugTriageInput = z.infer<typeof bugTriageInputSchema>;
 export type BugTriageOutput = z.infer<typeof bugTriageOutputSchema>;
 
 export const bugTriageSampleInput: BugTriageInput = {
+  inputMode: "advanced",
   title: "CSV export stalls on larger reports",
   affectedArea: "Analytics exports",
   observedBehavior:
@@ -52,6 +65,7 @@ export const bugTriageSampleInput: BugTriageInput = {
   ],
   settings: "Date range: last 12 months; all columns selected",
   constraints: "Do not test against production customer workspaces.",
+  triageOwnerId: "sample-theo-bennett",
 };
 
 export const bugTriageSampleOutput: BugTriageOutput = {
@@ -67,6 +81,12 @@ export const bugTriageSampleOutput: BugTriageOutput = {
     "The exact row-count threshold has not been isolated.",
   ],
   likelyCategory: "Scale-dependent export processing",
+  issueType: "product-defect",
+  routing: {
+    team: "engineering",
+    ownerId: "sample-theo-bennett",
+    rationale: "The issue reproduces across browsers and changes with export size, so technical validation is warranted.",
+  },
   recommendedChecks: [
     "Compare background job logs for a successful small export and a stalled large export.",
     "Test row counts around the observed threshold in a non-production workspace.",

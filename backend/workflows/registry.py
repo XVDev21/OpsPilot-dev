@@ -25,7 +25,7 @@ class WorkflowDefinition:
     input_schema: type[Schema]
     output_schema: type[Schema]
     prompt_instructions: str
-    prompt_version: str = "v2-provider-neutral"
+    prompt_version: str = "v3-team-routing"
 
     def metadata(self) -> dict[str, str]:
         return {
@@ -51,8 +51,12 @@ WORKFLOW_REGISTRY: dict[WorkflowId, WorkflowDefinition] = {
         output_schema=BugTriageOutput,
         prompt_instructions=(
             "Create an evidence-bound issue triage brief. Never state a root cause as confirmed "
-            "unless the supplied evidence proves it. Separate confirmed facts from gaps, and make "
-            "recommended checks specific and safe."
+            "unless the supplied evidence proves it. Classify the report as product-defect, "
+            "configuration-or-process, or needs-more-evidence. Route product defects to "
+            "engineering, configuration or settings issues to support, and unclear reports to "
+            "operations. Separate "
+            "confirmed facts from gaps, make checks specific and safe, and only echo a supplied "
+            "triageOwnerId; never invent a collaborator identifier."
         ),
     ),
     "meeting-actions": WorkflowDefinition(
@@ -67,7 +71,8 @@ WORKFLOW_REGISTRY: dict[WorkflowId, WorkflowDefinition] = {
         prompt_instructions=(
             "Extract decisions and action items only from the supplied notes. Set an owner or "
             "deadline only when the notes explicitly support it; otherwise use null. Preserve "
-            "unresolved ambiguity as an open question or unresolved item."
+            "unresolved ambiguity as an open question or unresolved item. Only echo a supplied "
+            "coordinatorId as followUpCoordinatorId; never invent a collaborator identifier."
         ),
     ),
     "status-update": WorkflowDefinition(
@@ -82,7 +87,8 @@ WORKFLOW_REGISTRY: dict[WorkflowId, WorkflowDefinition] = {
         prompt_instructions=(
             "Transform the supplied notes into an accurate status update for the requested "
             "audience and format. Never describe ongoing work as completed. Keep blockers and "
-            "next steps distinct, and make the shareable update concise."
+            "next steps distinct, and make the shareable update concise. Only echo a supplied "
+            "authorId; never invent a collaborator identifier."
         ),
     ),
 }

@@ -6,8 +6,8 @@ Authenticated Live Mode supports the three approved OpsPilot workflows through a
 catalog:
 
 - Gemini — default Efficient route
-- OpenAI — optional compatible route
-- Qwen — optional Alibaba Cloud Model Studio route
+- OpenAI — optional personal-key route that requires a funded OpenAI API project
+- Qwen — optional personal Alibaba Cloud Model Studio route
 
 Each provider maps Efficient, Balanced, and Deep to exact models owned by backend configuration.
 The browser cannot submit a model ID, base URL, hidden instruction, or unbounded workflow payload.
@@ -18,8 +18,12 @@ Demo Mode remains deterministic and never makes a provider request.
 For a selected provider, Django resolves credentials in this order:
 
 1. the authenticated user's personal credential
-2. the platform credential configured in the backend environment
+2. an allowlisted platform credential configured in the backend environment
 3. an unavailable-provider error when neither exists
+
+`AI_PLATFORM_PROVIDERS` is the server-owned spending boundary. The current production value is
+`gemini`, so a leftover OpenAI or Qwen environment key cannot silently fund a run. Personal
+credentials remain usable regardless of this platform allowlist.
 
 The resolved source (`personal` or `platform`) is saved on the workflow run for user-visible
 diagnostics. No API response includes the provider key.
@@ -71,8 +75,8 @@ validated against the same workflow Pydantic contract used by the other adapters
 
 1. Apply migrations for `provider_credentials` and `workflow_runs.credential_source`.
 2. Set a new `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` secret on Render before deploying the API.
-3. Keep `GEMINI_API_KEY` as the default platform fallback; add optional platform OpenAI/Qwen keys
-   only when desired.
+3. Keep `GEMINI_API_KEY` as the default platform fallback and set
+   `AI_PLATFORM_PROVIDERS=gemini`. Do not add platform OpenAI/Qwen keys for this release.
 4. Deploy the backend before the frontend so the new credential/status contracts are available.
 5. Sign in, open Settings, add a disposable personal key, verify only its fingerprint is shown, run
    the provider, and confirm the run reports `Personal key`.

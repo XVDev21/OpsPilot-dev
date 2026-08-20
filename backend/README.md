@@ -35,7 +35,7 @@ tokens.
 - Django accepts short-lived WorkOS access tokens as Bearer credentials.
 - API routes use `/api/v1` and return a stable error envelope with request IDs.
 - SQLite is local-only; production uses PostgreSQL through `DATABASE_URL`.
-- Gemini is the default low-cost provider; OpenAI and Qwen are optional compatible routes.
+- Gemini is the default low-cost platform provider. OpenAI and Qwen are optional personal-key routes; `AI_PLATFORM_PROVIDERS` controls which shared credentials may be used.
 - Personal provider keys are encrypted at rest with a dedicated rotatable server secret, never
   returned by the API, and scoped to their authenticated owner.
 - Qwen base URLs are constructed from an approved region and workspace ID; users cannot provide an

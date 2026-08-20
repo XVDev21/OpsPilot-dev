@@ -14,6 +14,7 @@ pytestmark = pytest.mark.django_db
 
 VALID_INPUTS = {
     "bug-triage": {
+        "inputMode": "advanced",
         "title": "CSV export stalls",
         "affectedArea": "Reporting exports",
         "observedBehavior": "Large CSV exports remain in processing for more than ten minutes.",
@@ -21,6 +22,7 @@ VALID_INPUTS = {
         "evidence": [{"value": "Small exports complete successfully."}],
     },
     "meeting-actions": {
+        "inputMode": "advanced",
         "title": "Release readiness review",
         "notes": (
             "The team decided to delay release until Monday. Mina will verify the migration by "
@@ -30,6 +32,7 @@ VALID_INPUTS = {
         "date": "2026-08-14",
     },
     "status-update": {
+        "inputMode": "simple",
         "notes": (
             "Completed the export validation. The migration check is in progress. Release remains "
             "blocked on analytics ownership. Next, confirm the owner."
@@ -45,18 +48,26 @@ VALID_OUTPUTS = {
         "confirmedFacts": ["Small exports complete."],
         "evidenceGaps": ["Server logs were not supplied."],
         "likelyCategory": "Scale-dependent export processing",
+        "issueType": "product-defect",
+        "routing": {
+            "team": "engineering",
+            "ownerId": None,
+            "rationale": "Repeatable behavior warrants technical validation.",
+        },
         "recommendedChecks": ["Compare small and large export job logs."],
         "confidence": 0.72,
         "humanReviewNotice": "An engineer must validate this triage.",
     },
     "MeetingActionsOutput": {
         "summary": "Release was delayed pending migration verification.",
+        "followUpCoordinatorId": None,
         "decisions": ["Delay release until Monday."],
         "actionItems": [{"task": "Verify the migration.", "owner": "Mina", "deadline": "Friday"}],
         "openQuestions": ["Who owns analytics?"],
         "unresolvedItems": ["Analytics ownership"],
     },
     "StatusUpdateOutput": {
+        "authorId": None,
         "completed": ["Export validation"],
         "inProgress": ["Migration check"],
         "blocked": ["Release pending analytics ownership"],
@@ -107,7 +118,7 @@ def test_all_live_workflows_complete_and_persist(
     assert body["provider"] == "openai"
     assert body["credential_source"] == "platform"
     assert body["intelligence"] == "balanced"
-    assert body["prompt_version"] == "v2-provider-neutral"
+    assert body["prompt_version"] == "v3-team-routing"
     assert body["input_tokens"] == 101
     assert body["output_tokens"] == 53
     assert body["expires_at"] is not None
@@ -138,7 +149,7 @@ def test_unknown_workflow_and_bad_input_do_not_call_provider(
     assert unknown.json()["error"]["code"] == "UNKNOWN_WORKFLOW"
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
-    assert "input.affectedArea" in invalid.json()["error"]["fieldErrors"]
+    assert "input.observedBehavior" in invalid.json()["error"]["fieldErrors"]
     assert WorkflowRun.objects.count() == 0
 
 

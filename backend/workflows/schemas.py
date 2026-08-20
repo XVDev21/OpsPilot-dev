@@ -10,6 +10,25 @@ MeaningfulText = Annotated[
 LongText = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=20, max_length=12_000)
 ]
+InputMode = Literal["simple", "advanced"]
+OptionalShortText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=160)]
+OptionalMeaningfulText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=3_000)]
+CollaboratorId = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        max_length=64,
+        pattern=r"^[a-z0-9][a-z0-9-]{2,63}$",
+    ),
+]
+OptionalCollaboratorId = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        max_length=64,
+        pattern=r"^(?:|[a-z0-9][a-z0-9-]{2,63})$",
+    ),
+]
 
 
 class EvidenceItem(Schema):
@@ -17,17 +36,25 @@ class EvidenceItem(Schema):
 
 
 class BugTriageInput(Schema):
+    inputMode: InputMode = "simple"
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
-    affectedArea: ShortText
+    affectedArea: OptionalShortText = ""
     observedBehavior: MeaningfulText
-    expectedBehavior: MeaningfulText
-    evidence: list[EvidenceItem] = Field(min_length=1, max_length=12)
+    expectedBehavior: OptionalMeaningfulText = ""
+    evidence: list[EvidenceItem] = Field(default_factory=list, max_length=12)
     settings: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2_000)] | None = (
         None
     )
     constraints: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=2_000)] | None
     ) = None
+    triageOwnerId: OptionalCollaboratorId = ""
+
+
+class RoutingRecommendation(Schema):
+    team: Literal["operations", "support", "engineering"]
+    ownerId: CollaboratorId | None
+    rationale: str
 
 
 class BugTriageOutput(Schema):
@@ -35,6 +62,8 @@ class BugTriageOutput(Schema):
     confirmedFacts: list[str]
     evidenceGaps: list[str]
     likelyCategory: str
+    issueType: Literal["product-defect", "configuration-or-process", "needs-more-evidence"]
+    routing: RoutingRecommendation
     recommendedChecks: list[str]
     confidence: float = Field(ge=0, le=1)
     humanReviewNotice: str
@@ -45,10 +74,12 @@ class Participant(Schema):
 
 
 class MeetingActionsInput(Schema):
+    inputMode: InputMode = "simple"
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
     notes: LongText
-    participants: list[Participant] = Field(max_length=50)
+    participants: list[Participant] = Field(default_factory=list, max_length=50)
     date: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = None
+    coordinatorId: OptionalCollaboratorId = ""
 
 
 class ActionItem(Schema):
@@ -59,6 +90,7 @@ class ActionItem(Schema):
 
 class MeetingActionsOutput(Schema):
     summary: str
+    followUpCoordinatorId: CollaboratorId | None
     decisions: list[str]
     actionItems: list[ActionItem]
     openQuestions: list[str]
@@ -66,12 +98,15 @@ class MeetingActionsOutput(Schema):
 
 
 class StatusUpdateInput(Schema):
+    inputMode: InputMode = "simple"
     notes: LongText
     audience: Literal["team", "manager", "stakeholders"]
     format: Literal["daily", "manager", "technical"]
+    authorId: OptionalCollaboratorId = ""
 
 
 class StatusUpdateOutput(Schema):
+    authorId: CollaboratorId | None
     completed: list[str]
     inProgress: list[str]
     blocked: list[str]
