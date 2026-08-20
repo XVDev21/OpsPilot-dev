@@ -13,6 +13,7 @@ from ai.prompts import compile_prompt
 from ai.providers.registry import get_provider, max_output_tokens_for, model_for
 from ai.types import AIProvider, IntelligenceLevel, ProviderFailure, ProviderName
 from common.errors import OpsPilotError
+from integrations.services import mark_credential_used
 from runs.models import WorkflowRun
 from runs.selectors import run_for_user
 from workflows.registry import WorkflowDefinition
@@ -91,7 +92,16 @@ def execute_workflow_run(
     started_at = monotonic()
 
     try:
-        active_provider = provider or get_provider(provider_name)
+        if provider is None:
+            resolved_provider = get_provider(provider=provider_name, user=user)
+            active_provider = resolved_provider.adapter
+            run.credential_source = resolved_provider.credential_source
+            run.save(update_fields=["credential_source"])
+            mark_credential_used(resolved_provider.credential_id)
+        else:
+            active_provider = provider
+            run.credential_source = "platform"
+            run.save(update_fields=["credential_source"])
         system_instruction, user_content = compile_prompt(
             workflow=workflow, validated_input=validated_input
         )

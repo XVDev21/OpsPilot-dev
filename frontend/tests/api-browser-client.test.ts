@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { browserApi } from "@/lib/api/browser-client";
 import workflowRunFixture from "../../contracts/v1/workflow-run.json";
+import providerCredentialsFixture from "../../contracts/v1/provider-credentials.json";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -66,6 +67,29 @@ describe("browser API client", () => {
           input: { title: "CSV export stalls" },
           options: { provider: "gemini", intelligence: "fast" },
         }),
+      }),
+    );
+  });
+
+  it("sends a personal provider key only to the same-origin credential endpoint", async () => {
+    const savedCredential = providerCredentialsFixture.items[1];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => savedCredential,
+    } satisfies Partial<Response>);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await browserApi.saveProviderCredential("openai", {
+      apiKey: "sk-personal-openai-key-that-is-long-enough",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backend/provider-credentials/openai",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ apiKey: "sk-personal-openai-key-that-is-long-enough" }),
       }),
     );
   });

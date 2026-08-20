@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Vercel + Render Free production deployment
-**Status:** Frontend and API live; WorkOS dashboard callback confirmation and signed-in smoke pending
+**Current milestone:** Live Mode + personal provider integrations
+**Status:** Implementation verified locally; production migration/deployment and signed-in Live smoke pending
 
 ## Milestones
 
@@ -12,8 +12,56 @@
 - [x] Frontend Part 2 - WorkOS + live API frontend
 - [x] Backend Part 1 - Django foundation
 - [x] Backend Part 2 - provider-neutral workflow engine
+- [x] Live Mode - encrypted personal Gemini/OpenAI/Qwen integrations
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Live Mode + personal provider integrations
+
+- [x] authenticated Live Mode for all three approved workflows
+- [x] Gemini, OpenAI, and Qwen provider catalog with exact server-owned model mappings
+- [x] personal Gemini/OpenAI/Qwen API-key create, rotate, list-status, and delete flows
+- [x] dedicated Fernet/MultiFernet key ring with encrypted-at-rest credentials and rotation support
+- [x] personal credentials take precedence over platform credentials without cross-user fallback
+- [x] API responses expose only configuration state, a short SHA-256 fingerprint, and non-secret
+  provider metadata; plaintext and ciphertext are never returned
+- [x] Qwen endpoints are constructed from approved regions and strict workspace hostname labels;
+  arbitrary URLs and model IDs are rejected
+- [x] Qwen non-thinking JSON mode enforces the server intelligence-tier budget with
+  `max_completion_tokens`
+- [x] run history records whether execution used a personal or platform credential without storing
+  the credential itself
+- [x] polished responsive Settings credential vault with password inputs, masked status, provider
+  onboarding links, accessible errors, and no browser persistence of keys
+- [x] provider availability and credential source are resolved per authenticated user
+- [x] Render Blueprint generates `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` instead of embedding a key
+- [x] deployment and rotation runbook documented in
+  `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`
+
+## Live Mode verification in this workspace
+
+```text
+backend Ruff            PASS - formatting and lint
+migration consistency   PASS - no uncommitted model changes
+Django checks           PASS - local and production deployment checks
+backend tests           PASS - 71 tests, 94.29% coverage
+Python dependency check PASS
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 12 files, 34 tests
+frontend build          PASS - Next.js 16.3, 27 generated routes/assets
+browser verification    PASS - 1440 desktop, 390x844 mobile, light/dark, reduced motion,
+                          credential save/delete states, zero overflow, 44px mobile actions
+accessibility           PASS - zero automated WCAG A/AA/2.1/2.2 violations; one contrast item
+                          required manual review because the audit cannot resolve a gradient
+security diff scan      PASS - 39/39 runtime files reviewed; one low-severity Qwen output-limit
+                          issue found, fixed with max_completion_tokens, and regression tested
+```
+
+The final verification used a disposable clean copy on local `C:` storage because package extraction
+on the mapped `X:` drive repeatedly stalled. The repository source was the code under test. A live
+external-provider smoke was intentionally not run without a disposable user credential; adapter,
+authorization, persistence, and error boundaries are covered by mocked integration tests.
 
 ## Vercel + Render Free production deployment
 
@@ -199,11 +247,20 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 
 ## Next-phase prerequisites
 
-- Add OpenAI project billing or quota before the optional OpenAI end-to-end smoke; Gemini is ready.
-- Apply `render.yaml`, then provide the assigned frontend/backend hostnames for the final origin values.
-- Add `https://<frontend-host>/auth/callback` to the WorkOS production redirect allowlist.
-- Sign in once during the deployment pass so WorkOS -> Next.js BFF -> Django -> provider -> history can
-  be verified end to end without sharing credentials.
+- Sync the Render Blueprint or add a new high-entropy `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` secret to
+  the existing API service before this backend release. Do not send the value in chat.
+- Deploy the backend first so migrations create `provider_credentials` and add
+  `workflow_runs.credential_source`; deploy the frontend after the API is healthy.
+- Keep the existing Gemini platform key as the default low-cost route. OpenAI billing/quota is needed
+  only for an OpenAI production smoke.
+- Qwen requires a region-specific key and, for Singapore or Beijing, the Alibaba Model Studio
+  workspace ID. Add these through Settings as a personal credential when ready; no Qwen secret is
+  required to merge this change.
+- Sign in once after deployment and run one disposable-key smoke for each enabled provider through
+  WorkOS -> Next.js BFF -> Django -> provider -> history, then delete the disposable credential and
+  inspect Render/Vercel logs for secret or prompt leakage.
+- Preserve older encryption keys after rotation until existing credentials have been re-saved or a
+  re-encryption migration has completed.
 
 ## Backend Part 2 implementation
 

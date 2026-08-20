@@ -90,9 +90,12 @@ class WorkflowMetadata(Schema):
 
 
 class ProviderOption(Schema):
-    id: Literal["gemini", "openai"]
+    id: Literal["gemini", "openai", "qwen"]
     label: str
+    description: str
     enabled: bool
+    credentialSource: Literal["personal", "platform"] | None
+    supportsPersonalKey: bool
 
 
 class IntelligenceOption(Schema):
@@ -105,6 +108,6 @@ class IntelligenceOption(Schema):
 class ExecutionOptions(Schema):
     providers: list[ProviderOption]
     intelligenceLevels: list[IntelligenceOption]
-    defaultProvider: Literal["gemini", "openai"]
+    defaultProvider: Literal["gemini", "openai", "qwen"]
     defaultIntelligence: Literal["fast", "balanced", "high"]
     retentionDays: int

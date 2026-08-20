@@ -12,6 +12,10 @@ class WorkflowRun(models.Model):
         COMPLETED = "completed", "Completed"
         FAILED = "failed", "Failed"
 
+    class CredentialSource(models.TextChoices):
+        PERSONAL = "personal", "Personal"
+        PLATFORM = "platform", "Platform"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name="workflow_runs")
     workflow_id = models.CharField(max_length=64)
@@ -20,6 +24,12 @@ class WorkflowRun(models.Model):
     result_json = models.JSONField(blank=True, null=True)
     error_code = models.CharField(max_length=64, blank=True, null=True)
     provider = models.CharField(max_length=64, blank=True, null=True)
+    credential_source = models.CharField(
+        max_length=16,
+        choices=CredentialSource.choices,
+        blank=True,
+        null=True,
+    )
     model = models.CharField(max_length=128, blank=True, null=True)
     intelligence = models.CharField(max_length=16, blank=True, null=True)
     prompt_version = models.CharField(max_length=32, blank=True, null=True)

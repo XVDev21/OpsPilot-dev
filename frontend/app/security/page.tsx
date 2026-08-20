@@ -28,17 +28,17 @@ const controls = [
   {
     icon: ShieldCheck,
     title: "Verified API requests",
-    body: "The frontend attaches a WorkOS Bearer token only on the server-to-Django request. Django verification arrives with the backend phase.",
+    body: "The frontend attaches a WorkOS Bearer token only on the server-to-Django request. Django verifies its signature and account claims before protected API work.",
   },
   {
     icon: Database,
     title: "User-owned history",
-    body: "The final history interface is account-scoped and API-ready. Django persistence and authorization remain the backend phase.",
+    body: "Django scopes saved workflow input and results to the authenticated account. Trial records expire after 30 days and can be deleted sooner by their owner.",
   },
   {
     icon: BrainCircuit,
     title: "Provider boundary",
-    body: "Live workflow input will be sent only through the configured backend AI provider adapter, never directly from the frontend.",
+    body: "Live workflow input is sent through a vetted Django provider adapter, never directly from the browser. Exact models and provider endpoints remain server-owned.",
   },
 ];
 
@@ -49,18 +49,18 @@ export default function SecurityPage() {
         <section className="border-b border-border">
           <div className="page-container grid gap-12 py-16 md:grid-cols-[1fr_0.75fr] md:items-center md:py-24">
             <div>
-              <Badge tone="success">Truthful by phase</Badge>
+              <Badge tone="success">Implemented controls</Badge>
               <h1 className="mt-5 max-w-3xl text-balance text-[clamp(2.6rem,6vw,4.9rem)] leading-[1.02] font-extrabold tracking-[-0.06em] text-foreground">
                 A clear boundary between demo and live processing.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-foreground-muted sm:text-lg">
-                OpsPilot’s security story is presented as it exists today. Implemented frontend controls and pending backend controls are distinguished without implying certifications.
+                OpsPilot’s security story is presented as it exists today: authenticated API boundaries, account isolation, encrypted personal provider keys, and an explicit local-only Demo Mode—without implying certifications.
               </p>
             </div>
             <div className="paper-grid rounded-[1.75rem] border border-border bg-surface-raised p-6 shadow-[var(--shadow-md)]">
               <Laptop aria-hidden="true" className="size-8 text-primary" />
-              <p className="mt-8 text-xs font-bold tracking-wider text-primary uppercase">Frontend Part 2</p>
-              <h2 className="mt-2 text-xl font-bold text-foreground">Auth is live; Demo Mode stays deterministic</h2>
+              <p className="mt-8 text-xs font-bold tracking-wider text-primary uppercase">Live + Demo</p>
+              <h2 className="mt-2 text-xl font-bold text-foreground">Verified live processing; deterministic fallback</h2>
               <p className="mt-3 text-sm leading-7 text-foreground-muted">
                 WorkOS protects the authenticated workspace. Demo Mode remains explicit, generates local schema-validated fixtures, and makes no AI provider request.
               </p>
@@ -77,7 +77,7 @@ export default function SecurityPage() {
                   Controls follow the data path.
                 </h2>
                 <p className="mt-4 text-sm leading-7 text-foreground-muted">
-                  Authentication and API boundaries now exist in the frontend. Django enforcement and provider processing remain intentionally pending.
+                  WorkOS, the Next.js server boundary, Django authorization, provider adapters, and encrypted credential storage now form one implemented path.
                 </p>
               </div>
               <div className="grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-border bg-border sm:grid-cols-2">

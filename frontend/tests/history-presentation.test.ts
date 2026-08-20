@@ -11,6 +11,7 @@ function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
     result_json: { summary: "Owners and deadlines are ready." },
     error_code: null,
     provider: null,
+    credential_source: null,
     model: null,
     intelligence: null,
     prompt_version: null,

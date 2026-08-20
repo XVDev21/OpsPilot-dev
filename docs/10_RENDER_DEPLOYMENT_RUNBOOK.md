@@ -29,11 +29,15 @@ API service secrets:
 WORKOS_CLIENT_ID
 GEMINI_API_KEY
 OPENAI_API_KEY (optional)
+QWEN_API_KEY (optional platform key)
+QWEN_REGION (required only with a platform Qwen key)
+QWEN_WORKSPACE_ID (required for Singapore or Beijing platform Qwen keys)
 FRONTEND_ORIGIN
 DJANGO_ALLOWED_HOSTS
 ```
 
-Render generates `DJANGO_SECRET_KEY` and injects `DATABASE_URL` from `opspilot-db`.
+Render generates `DJANGO_SECRET_KEY` and `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS`, then injects
+`DATABASE_URL` from `opspilot-db`. Never reuse `DJANGO_SECRET_KEY` as the provider-credential key.
 
 ## Values Vercel requires
 
@@ -79,6 +83,10 @@ Keep `http://localhost:3000/auth/callback` as a separate local redirect URI.
 2. Open the Vercel frontend, sign in with Google, and confirm the personal workspace loads.
 3. Run one Efficient Gemini workflow and verify token usage and history.
 4. Run one OpenAI workflow only if the optional key and quota are configured.
-5. Verify history, run detail, manual run deletion, and cross-account isolation.
-6. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
-7. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.
+5. In Settings, save a disposable personal credential, confirm its masked fingerprint, run its
+   provider, then delete the credential and confirm workspace fallback/unavailable status.
+6. Run Qwen only after selecting the API-key region and, for Singapore or Beijing, its Model Studio
+   workspace ID.
+7. Verify history, credential source, run detail, manual run deletion, and cross-account isolation.
+8. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
+9. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.

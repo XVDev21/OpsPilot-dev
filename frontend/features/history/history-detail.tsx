@@ -99,8 +99,9 @@ export function HistoryDetail({ runId }: { runId: string }) {
 
       <details className="mt-5 rounded-2xl border border-border bg-surface-raised px-5 py-3 shadow-[var(--shadow-sm)]">
         <summary className="min-h-11 cursor-pointer content-center text-sm font-bold text-foreground">Technical details</summary>
-        <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
+        <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           <div className="bg-surface-soft p-4"><dt className="text-xs text-foreground-soft">Provider / model</dt><dd className="mt-1 text-sm font-semibold text-foreground">{run.provider ?? "Not recorded"} / {run.model ?? "Not recorded"}</dd></div>
+          <div className="bg-surface-soft p-4"><dt className="text-xs text-foreground-soft">Credential</dt><dd className="mt-1 text-sm font-semibold text-foreground">{run.credential_source === "personal" ? "Personal key" : run.credential_source === "platform" ? "Workspace key" : "Not recorded"}</dd></div>
           <div className="bg-surface-soft p-4"><dt className="text-xs text-foreground-soft">Duration</dt><dd className="mt-1 text-sm font-semibold text-foreground">{run.duration_ms === null ? "Not recorded" : `${run.duration_ms} ms`}</dd></div>
           <div className="bg-surface-soft p-4"><dt className="text-xs text-foreground-soft">Run ID</dt><dd className="mt-1 break-all font-mono text-xs text-foreground">{run.id}</dd></div>
         </dl>

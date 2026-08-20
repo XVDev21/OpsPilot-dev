@@ -3,8 +3,9 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
-type ProviderName = Literal["gemini", "openai"]
+type ProviderName = Literal["gemini", "openai", "qwen"]
 type IntelligenceLevel = Literal["fast", "balanced", "high"]
+type CredentialSource = Literal["personal", "platform"]
 
 
 @dataclass(frozen=True)

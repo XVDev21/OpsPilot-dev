@@ -3,6 +3,7 @@ from pathlib import Path
 
 from accounts.schemas import AppUserSchema
 from common.schemas import ApiErrorEnvelope
+from integrations.schemas import ProviderCredentialList
 from runs.schemas import RunListResponse, WorkflowRunSchema
 from workflows.schemas import ExecutionOptions
 
@@ -19,3 +20,4 @@ def test_shared_contract_fixtures_validate_against_backend_schemas() -> None:
     WorkflowRunSchema.model_validate(fixture("workflow-run.json"))
     RunListResponse.model_validate(fixture("run-list.json"))
     ExecutionOptions.model_validate(fixture("execution-options.json"))
+    ProviderCredentialList.model_validate(fixture("provider-credentials.json"))

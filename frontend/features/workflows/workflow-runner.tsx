@@ -34,7 +34,11 @@ type RunMetadata = {
   outputTokens: number | null;
 };
 
-const providerLabels: Record<AIProvider, string> = { gemini: "Gemini", openai: "OpenAI" };
+const providerLabels: Record<AIProvider, string> = {
+  gemini: "Gemini",
+  openai: "OpenAI",
+  qwen: "Qwen",
+};
 const intelligenceLabels: Record<IntelligenceLevel, string> = {
   fast: "Efficient",
   balanced: "Balanced",

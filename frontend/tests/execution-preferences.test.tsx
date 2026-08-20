@@ -12,6 +12,7 @@ function PreferenceProbe() {
     <div>
       <output>{`${provider}:${intelligence}`}</output>
       <button type="button" onClick={() => setProvider("openai")}>Use OpenAI</button>
+      <button type="button" onClick={() => setProvider("qwen")}>Use Qwen</button>
       <button type="button" onClick={() => setIntelligence("high")}>Use Deep</button>
     </div>
   );
@@ -35,5 +36,9 @@ describe("execution preferences", () => {
     expect(screen.getByText("openai:high")).toBeInTheDocument();
     expect(window.localStorage.getItem("opspilot:provider:v1")).toBe("openai");
     expect(window.localStorage.getItem("opspilot:intelligence:v1")).toBe("high");
+
+    await user.click(screen.getByRole("button", { name: "Use Qwen" }));
+    expect(screen.getByText("qwen:high")).toBeInTheDocument();
+    expect(window.localStorage.getItem("opspilot:provider:v1")).toBe("qwen");
   });
 });

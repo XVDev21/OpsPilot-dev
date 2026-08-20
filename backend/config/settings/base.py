@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts.apps.AccountsConfig",
     "common.apps.CommonConfig",
+    "integrations.apps.IntegrationsConfig",
     "runs.apps.RunsConfig",
     "workflows.apps.WorkflowsConfig",
 ]
@@ -106,6 +107,10 @@ WORKOS_JWKS_CACHE_SECONDS = int(os.getenv("WORKOS_JWKS_CACHE_SECONDS", "300"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "").strip()
+QWEN_REGION = os.getenv("QWEN_REGION", "singapore").strip().lower()
+QWEN_WORKSPACE_ID = os.getenv("QWEN_WORKSPACE_ID", "").strip()
+PROVIDER_CREDENTIAL_ENCRYPTION_KEYS = env_list("PROVIDER_CREDENTIAL_ENCRYPTION_KEYS")
 AI_DEFAULT_PROVIDER = os.getenv("AI_DEFAULT_PROVIDER", "gemini").strip().lower()
 AI_DEFAULT_INTELLIGENCE = os.getenv("AI_DEFAULT_INTELLIGENCE", "fast").strip().lower()
 AI_REQUEST_TIMEOUT_SECONDS = int(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "30"))
@@ -124,6 +129,11 @@ AI_MODEL_MAP = {
         "balanced": os.getenv("OPENAI_MODEL_BALANCED", "gpt-5.4-mini"),
         "high": os.getenv("OPENAI_MODEL_HIGH", "gpt-5.6-sol"),
     },
+    "qwen": {
+        "fast": os.getenv("QWEN_MODEL_FAST", "qwen3.6-flash-2026-04-16"),
+        "balanced": os.getenv("QWEN_MODEL_BALANCED", "qwen3.7-plus-2026-05-26"),
+        "high": os.getenv("QWEN_MODEL_HIGH", "qwen3.7-max-2026-06-08"),
+    },
 }
 AI_MAX_OUTPUT_TOKENS = {
     "fast": int(os.getenv("AI_MAX_OUTPUT_TOKENS_FAST", "1200")),
@@ -132,7 +142,7 @@ AI_MAX_OUTPUT_TOKENS = {
 }
 
 if AI_DEFAULT_PROVIDER not in AI_MODEL_MAP:
-    raise ImproperlyConfigured("AI_DEFAULT_PROVIDER must be 'gemini' or 'openai'.")
+    raise ImproperlyConfigured("AI_DEFAULT_PROVIDER must be 'gemini', 'openai', or 'qwen'.")
 if AI_DEFAULT_INTELLIGENCE not in AI_MAX_OUTPUT_TOKENS:
     raise ImproperlyConfigured("AI_DEFAULT_INTELLIGENCE must be 'fast', 'balanced', or 'high'.")
 if (
