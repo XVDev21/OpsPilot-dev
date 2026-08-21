@@ -29,7 +29,7 @@ services:
       - key: WORKOS_CLIENT_ID
         sync: false
       - key: WORKOS_ISSUER
-        value: https://api.workos.com/
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: PROVIDER_CREDENTIAL_ENCRYPTION_KEYS

@@ -5,10 +5,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
   CheckCircle2,
+  CloudOff,
   ExternalLink,
   KeyRound,
   LoaderCircle,
+  LogIn,
   Network,
+  RefreshCcw,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -83,10 +86,14 @@ function ProviderCredentialCard({
   provider,
   credential,
   platformEnabled,
+  credentialStatusUnavailable,
+  platformStatusUnavailable,
 }: {
   provider: AIProvider;
   credential: ProviderCredentialSummary | undefined;
   platformEnabled: boolean;
+  credentialStatusUnavailable: boolean;
+  platformStatusUnavailable: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const queryClient = useQueryClient();
@@ -128,7 +135,26 @@ function ProviderCredentialCard({
     },
   });
   const isPersonal = credential?.configured ?? false;
-  const status = isPersonal ? "Personal key" : platformEnabled ? "Workspace key" : "Not configured";
+  const statusUnavailable = !isPersonal && (
+    credentialStatusUnavailable || platformStatusUnavailable
+  );
+  const status = isPersonal
+    ? "Personal key"
+    : statusUnavailable
+      ? "Status unavailable"
+      : platformEnabled
+        ? "Workspace key"
+        : "Not configured";
+  let credentialDescription = "Add a personal key to enable this provider for your account.";
+  if (isPersonal) {
+    credentialDescription = `Encrypted key fingerprint ${credential?.keyFingerprint}.`;
+  } else if (credentialStatusUnavailable) {
+    credentialDescription = "Saved-key status could not be checked. You can still connect or replace this provider key.";
+  } else if (platformStatusUnavailable) {
+    credentialDescription = "Workspace availability could not be checked. You can still connect a personal key.";
+  } else if (platformEnabled) {
+    credentialDescription = "Live runs currently use the OpsPilot workspace credential.";
+  }
 
   return (
     <article className="rounded-2xl border border-border bg-surface-soft p-4 sm:p-5">
@@ -140,15 +166,11 @@ function ProviderCredentialCard({
           <div>
             <h3 className="text-sm font-bold text-foreground">{info.label}</h3>
             <p className="mt-1 text-xs leading-5 text-foreground-muted">
-              {isPersonal
-                ? `Encrypted key fingerprint ${credential?.keyFingerprint}.`
-                : platformEnabled
-                  ? "Live runs currently use the OpsPilot workspace credential."
-                  : "Add a personal key to enable this provider for your account."}
+              {credentialDescription}
             </p>
           </div>
         </div>
-        <Badge tone={isPersonal ? "success" : platformEnabled ? "primary" : "neutral"}>
+        <Badge tone={isPersonal ? "success" : platformEnabled && !statusUnavailable ? "primary" : "neutral"}>
           {status}
         </Badge>
       </div>
@@ -265,7 +287,7 @@ function ProviderCredentialCard({
             onClick={() => setEditing(true)}
           >
             <KeyRound aria-hidden="true" className="size-4" />
-            {isPersonal ? "Rotate personal key" : "Add personal key"}
+            {isPersonal ? "Rotate personal key" : "Connect provider"}
           </Button>
           {isPersonal ? (
             <ConfirmDialog
@@ -327,6 +349,14 @@ export function ProviderCredentialsPanel() {
       provider.credentialSource === "platform",
     ]) ?? [],
   );
+  const statusError = credentials.error ?? executionOptions.error;
+  const authenticationError = statusError instanceof ApiError && statusError.status === 401;
+  const statusRequestId = statusError instanceof ApiError ? statusError.requestId : null;
+  const statusPending = credentials.isPending || executionOptions.isPending;
+
+  async function retryStatusCheck() {
+    await Promise.all([credentials.refetch(), executionOptions.refetch()]);
+  }
 
   return (
     <section
@@ -355,16 +385,60 @@ export function ProviderCredentialsPanel() {
         </p>
       </div>
 
-      {credentials.isPending || executionOptions.isPending ? (
+      {statusPending ? (
         <p className="mt-5 flex min-h-11 items-center gap-2 text-sm text-foreground-muted" role="status">
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-primary motion-reduce:animate-none" />
           Loading provider security status…
         </p>
       ) : credentials.isError || executionOptions.isError ? (
-        <p className="mt-5 rounded-xl border border-warning/20 bg-warning/8 p-4 text-sm text-foreground-muted" role="alert">
-          Provider credential status is temporarily unavailable. Existing Live Mode settings were not changed.
-        </p>
-      ) : (
+        <div className="mt-5 rounded-xl border border-warning/20 bg-warning/8 p-4" role="alert">
+          <div className="flex items-start gap-3">
+            <CloudOff aria-hidden="true" className="mt-0.5 size-4.5 shrink-0 text-warning" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {authenticationError ? "Live session needs attention" : "Provider status is temporarily unavailable"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-foreground-muted">
+                {authenticationError
+                  ? "OpsPilot could not authorize the provider status check. The connection fields remain available; refresh your sign-in before saving a key."
+                  : "Saved credential and workspace availability could not be confirmed. The connection fields remain available, and no existing key was changed."}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="min-h-11 sm:min-h-10"
+              onClick={() => void retryStatusCheck()}
+              disabled={credentials.isFetching || executionOptions.isFetching}
+            >
+              {credentials.isFetching || executionOptions.isFetching ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <RefreshCcw aria-hidden="true" className="size-4" />
+              )}
+              Retry status check
+            </Button>
+            {authenticationError ? (
+              <Button type="button" size="sm" variant="ghost" className="min-h-11 sm:min-h-10" asChild>
+                <a href="/sign-in" target="_blank" rel="noreferrer">
+                  <LogIn aria-hidden="true" className="size-4" /> Refresh sign-in
+                </a>
+              </Button>
+            ) : null}
+          </div>
+          {statusRequestId ? (
+            <details className="mt-3 text-xs text-foreground-soft">
+              <summary className="min-h-11 cursor-pointer content-center font-semibold">Technical details</summary>
+              <p className="font-mono">Request ID: {statusRequestId}</p>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!statusPending ? (
         <div className="mt-5 grid gap-3 xl:grid-cols-3">
           {(["gemini", "openai", "qwen"] as const).map((provider) => (
             <ProviderCredentialCard
@@ -372,10 +446,12 @@ export function ProviderCredentialsPanel() {
               provider={provider}
               credential={personalByProvider.get(provider)}
               platformEnabled={platformByProvider.get(provider) ?? false}
+              credentialStatusUnavailable={credentials.isError}
+              platformStatusUnavailable={executionOptions.isError}
             />
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

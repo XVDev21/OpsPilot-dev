@@ -27,7 +27,7 @@ API service secrets:
 
 ```text
 WORKOS_CLIENT_ID
-WORKOS_ISSUER=https://api.workos.com/
+WORKOS_ISSUER=<exact issuer for the WorkOS environment>
 GEMINI_API_KEY
 AI_PLATFORM_PROVIDERS=gemini
 FRONTEND_ORIGIN
@@ -36,8 +36,11 @@ DJANGO_ALLOWED_HOSTS
 
 Render generates `DJANGO_SECRET_KEY` and `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS`, then injects
 `DATABASE_URL` from `opspilot-db`. Never reuse `DJANGO_SECRET_KEY` as the provider-credential key.
-Keep the trailing slash in `WORKOS_ISSUER`; JWT issuer comparison is intentionally exact. OpenAI and
-Qwen are personal-key integrations in this release and do not need platform secrets on Render.
+Use the exact access-token `iss` value for the WorkOS environment. The default is
+`https://api.workos.com/`, but an AuthKit domain becomes the issuer when one is configured. Open
+the deployed `/sign-in` route to identify the AuthKit origin, then preserve the exact issuer format
+reported by WorkOS; JWT issuer comparison intentionally does not normalize trailing slashes. OpenAI
+and Qwen are personal-key integrations in this release and do not need platform secrets on Render.
 
 ## Values Vercel requires
 
