@@ -50,12 +50,13 @@ jobs:
       run:
         working-directory: backend
     env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-only-not-a-production-secret
       DJANGO_ALLOWED_HOSTS: api.example.test
       DATABASE_URL: postgresql://ci:ci@localhost:5432/opspilot
       FRONTEND_ORIGIN: https://app.example.test
       WORKOS_CLIENT_ID: client_ci_placeholder
-      WORKOS_ISSUER: https://api.workos.com
+      WORKOS_ISSUER: https://api.workos.com/user_management/client_ci_default
       GEMINI_API_KEY: ci-placeholder-not-used-by-mocked-tests
       PROVIDER_CREDENTIAL_ENCRYPTION_KEYS: ci-placeholder-provider-credential-key-at-least-32-characters
     steps:

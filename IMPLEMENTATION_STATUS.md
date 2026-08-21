@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Live Mode reliability + team-ready workflow intake
-**Status:** Hotfix verified locally; Render issuer update, deployment, and signed-in Live smoke pending merge
+**Current milestone:** Production Live authentication recovery + resilient provider vault
+**Status:** Hotfix verified locally and in production; draft PR open
 
 ## Milestones
 
@@ -17,10 +17,36 @@
 - [ ] End-to-end integration
 - [x] Deployment
 
+## Production Live authentication recovery + resilient provider vault hotfix
+
+- [x] correlate production 401s across `/me`, execution options, provider credentials, and Bug
+  Triage with the shared WorkOS Bearer boundary
+- [x] resolve the canonical WorkOS OIDC metadata and set Render `WORKOS_ISSUER` to its exact
+  `issuer` value, including the environment's distinct default-application client ID
+- [x] keep Gemini, OpenAI, and Qwen connection cards available when provider-status queries fail
+- [x] expose encrypted API-key entry from every degraded provider card without assuming that a
+  previously saved credential is absent
+- [x] add accessible retry, sign-in refresh, and request-ID details for authenticated status errors
+- [x] add a workflow-level 401 recovery path while preserving the user's submitted input
+- [x] regression-test provider key entry during a shared authenticated-status outage
+- [x] run non-deploy Django checks against SQLite test settings so Windows CI does not wait on the
+  intentionally unavailable PostgreSQL service; the deploy check still uses production settings
+
+```text
+backend Ruff            PASS
+backend tests           PASS - 73 tests, 94.41% coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 13 files, 39 tests
+frontend build          PASS - Next.js 16.3, 29 generated routes/assets
+production API deploy   PASS - Render live with the OIDC-discovered WorkOS issuer
+production Live smoke   PASS - signed-in Gemini Bug Triage, 543 tokens, private history persisted
+```
+
 ## Live Mode reliability + team-ready workflow intake hotfix
 
-- [x] preserve WorkOS's exact slash-terminated access-token issuer and regression-test the previous
-  production `InvalidIssuerError`
+- [x] preserve WorkOS's full configured access-token issuer and regression-test the previous
+  visible-client-ID production `InvalidIssuerError`
 - [x] restrict shared platform spending to Gemini with `AI_PLATFORM_PROVIDERS=gemini`; OpenAI and
   Qwen remain vetted personal-key integrations only
 - [x] reset the versioned browser provider preference to Gemini so an unavailable historical
@@ -50,8 +76,7 @@ frontend build          PASS - Next.js 16.3, 29 generated routes/assets
 browser verification    PASS - 1440 desktop, 390x844 mobile, light/dark, all three workflows,
                           Simple/Advanced states, ownership/routing results, zero overflow,
                           zero console warnings/errors
-production Live smoke   PENDING - merge, deploy, set WORKOS_ISSUER=https://api.workos.com/,
-                          then run signed-in Gemini workflow through history
+production Live smoke   PASS - signed-in Gemini Bug Triage persisted to private history
 ```
 
 ## Live Mode + personal provider integrations
@@ -285,8 +310,8 @@ Browser verification covered the 1440x900 desktop landing and demo, 390x844 and 
 
 ## Next-phase prerequisites
 
-- After this hotfix merges, set Render `WORKOS_ISSUER` to the exact value
-  `https://api.workos.com/`, deploy the backend, and clear no encryption keys.
+- Render `WORKOS_ISSUER` must remain the exact custom AuthKit issuer exposed by the production
+  sign-in route. Deploy the backend without clearing or rotating any encryption keys.
 - Keep `AI_PLATFORM_PROVIDERS=gemini`. The existing Gemini platform key remains the default
   low-cost route; the platform OpenAI key is intentionally unused and can be removed from Render.
 - Deploy the backend before the frontend, confirm health, then exercise WorkOS → Next.js BFF →

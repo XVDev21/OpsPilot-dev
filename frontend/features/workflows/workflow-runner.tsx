@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, FileCheck2, LoaderCircle, LockKeyhole, RefreshCcw } from "lucide-react";
+import { AlertTriangle, FileCheck2, LoaderCircle, LockKeyhole, LogIn, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 import {
   useAppMode,
@@ -64,13 +64,21 @@ function WorkflowForm({
 }
 
 function ErrorPanel({ error, onRetry }: { error: ApiError; onRetry: (() => void) | null }) {
+  const authenticationError = error.status === 401;
+
   return (
     <div className="m-4 rounded-2xl border border-danger/25 bg-danger/8 p-5 sm:m-5 sm:p-6" role="alert">
       <span className="grid size-11 place-items-center rounded-xl bg-danger/12 text-danger">
         <AlertTriangle aria-hidden="true" className="size-5" />
       </span>
-      <h3 className="mt-5 text-base font-bold text-foreground">Live run could not finish</h3>
-      <p className="mt-2 text-sm leading-6 text-foreground-muted">{error.message}</p>
+      <h3 className="mt-5 text-base font-bold text-foreground">
+        {authenticationError ? "Live session needs to be refreshed" : "Live run could not finish"}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-foreground-muted">
+        {authenticationError
+          ? "The live API could not authorize this WorkOS session. Refresh sign-in in another tab, then return here and retry your preserved input."
+          : error.message}
+      </p>
       {error.requestId ? (
         <details className="mt-4 text-xs text-foreground-soft">
           <summary className="min-h-11 cursor-pointer content-center font-semibold">Technical details</summary>
@@ -78,9 +86,17 @@ function ErrorPanel({ error, onRetry }: { error: ApiError; onRetry: (() => void)
         </details>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-2">
-        {error.retryable && onRetry ? (
+        {authenticationError ? (
+          <Button type="button" variant="secondary" asChild>
+            <a href="/sign-in" target="_blank" rel="noreferrer">
+              <LogIn aria-hidden="true" className="size-4" /> Refresh sign-in
+            </a>
+          </Button>
+        ) : null}
+        {(error.retryable || authenticationError) && onRetry ? (
           <Button type="button" variant="secondary" onClick={onRetry}>
-            <RefreshCcw aria-hidden="true" className="size-4" /> Retry live run
+            <RefreshCcw aria-hidden="true" className="size-4" />
+            {authenticationError ? "Retry authorized run" : "Retry live run"}
           </Button>
         ) : null}
         <p className="self-center text-xs text-foreground-soft">
