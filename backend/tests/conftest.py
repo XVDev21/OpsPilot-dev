@@ -15,7 +15,7 @@ def client() -> Client:
 @pytest.fixture
 def workos_claims() -> dict[str, Any]:
     return {
-        "iss": "https://api.workos.com/",
+        "iss": "https://api.workos.com/user_management/client_test_default",
         "sub": "user_test_primary",
         "client_id": "client_test_opspilot",
         "email": "pilot@example.com",

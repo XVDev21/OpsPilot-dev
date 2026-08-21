@@ -13,7 +13,7 @@ def verifier_and_key(monkeypatch: pytest.MonkeyPatch):
     private_key = rsa.generate_private_key(public_exponent=65_537, key_size=2048)
     verifier = WorkOSTokenVerifier(
         client_id="client_test_opspilot",
-        issuer="https://opspilot-staging.authkit.app",
+        issuer="https://api.workos.com/user_management/client_test_default",
         jwks_url="https://example.invalid/jwks",
         cache_seconds=300,
     )
@@ -28,7 +28,7 @@ def verifier_and_key(monkeypatch: pytest.MonkeyPatch):
 def signed_token(private_key, **overrides) -> str:
     now = datetime.now(UTC)
     claims = {
-        "iss": "https://opspilot-staging.authkit.app",
+        "iss": "https://api.workos.com/user_management/client_test_default",
         "sub": "user_test_signed",
         "client_id": "client_test_opspilot",
         "iat": now,
@@ -47,11 +47,18 @@ def test_verifier_accepts_valid_rsa_signed_workos_token(verifier_and_key) -> Non
     assert claims["client_id"] == "client_test_opspilot"
 
 
-def test_verifier_rejects_a_normalized_custom_issuer(verifier_and_key) -> None:
+def test_verifier_rejects_the_visible_application_id_as_the_issuer_id(
+    verifier_and_key,
+) -> None:
     verifier, private_key = verifier_and_key
 
     with pytest.raises(jwt.InvalidIssuerError):
-        verifier.verify(signed_token(private_key, iss="https://opspilot-staging.authkit.app/"))
+        verifier.verify(
+            signed_token(
+                private_key,
+                iss="https://api.workos.com/user_management/client_test_opspilot",
+            )
+        )
 
 
 @pytest.mark.parametrize(
