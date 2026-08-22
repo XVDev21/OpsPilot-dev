@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "common.apps.CommonConfig",
     "integrations.apps.IntegrationsConfig",
     "runs.apps.RunsConfig",
+    "workitems.apps.WorkItemsConfig",
     "workflows.apps.WorkflowsConfig",
 ]
 

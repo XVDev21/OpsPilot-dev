@@ -17,10 +17,13 @@ export const backendUserSchema = z.object({
 });
 
 export const runStatusSchema = z.enum(["pending", "completed", "failed"]);
-export const aiProviderSchema = z.enum(["gemini", "openai", "qwen"]);
+export const runExecutionPhaseSchema = z.enum(["queued", "preparing", "generating", "validating", "saving", "completed", "failed"]);
+export const aiProviderSchema = z.enum(["gemini", "openai", "qwen", "bedrock", "custom", "local"]);
 export const intelligenceLevelSchema = z.enum(["fast", "balanced", "high"]);
-export const credentialSourceSchema = z.enum(["personal", "platform"]);
+export const credentialSourceSchema = z.enum(["personal", "platform", "connector"]);
 export const qwenEndpointRegionSchema = z.enum(["singapore", "us", "beijing"]);
+export const awsRegionSchema = z.enum(["us-east-1", "us-east-2", "us-west-2", "ap-northeast-1", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "eu-central-1", "eu-west-1", "eu-west-2"]);
+export const modelIdSchema = z.string().trim().min(2).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{1,255}$/);
 
 export const runOptionsSchema = z.object({
   provider: aiProviderSchema,
@@ -30,6 +33,7 @@ export const runOptionsSchema = z.object({
 export const createRunRequestSchema = z.object({
   input: z.unknown(),
   options: runOptionsSchema,
+  handoffId: z.string().uuid().nullable().optional(),
 });
 
 export const executionOptionsSchema = z.object({
@@ -58,6 +62,12 @@ export const providerCredentialInputSchema = z.object({
   workspaceId: z.string().trim().min(2).max(63)
     .regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])$/)
     .nullable().optional(),
+  displayName: z.string().trim().max(80).nullable().optional(),
+  baseUrl: z.string().trim().url().max(500).nullable().optional(),
+  awsRegion: awsRegionSchema.nullable().optional(),
+  modelFast: modelIdSchema.nullable().optional(),
+  modelBalanced: modelIdSchema.nullable().optional(),
+  modelHigh: modelIdSchema.nullable().optional(),
 });
 
 export const providerCredentialSummarySchema = z.object({
@@ -66,6 +76,12 @@ export const providerCredentialSummarySchema = z.object({
   keyFingerprint: z.string().nullable(),
   endpointRegion: qwenEndpointRegionSchema.nullable(),
   workspaceId: z.string().nullable(),
+  displayName: z.string().nullable(),
+  baseUrl: z.string().nullable(),
+  awsRegion: z.string().nullable(),
+  modelFast: z.string().nullable(),
+  modelBalanced: z.string().nullable(),
+  modelHigh: z.string().nullable(),
   updatedAt: z.string().nullable(),
 });
 
@@ -77,6 +93,7 @@ export const workflowRunSchema = z.object({
   id: z.string().min(1),
   workflow_id: z.enum(workflowIds),
   status: runStatusSchema,
+  execution_phase: runExecutionPhaseSchema,
   input_json: jsonValueSchema,
   result_json: jsonValueSchema.nullable(),
   error_code: z.string().nullable(),
@@ -99,6 +116,69 @@ export const runListResponseSchema = z.object({
 });
 
 export const backendRunListSchema = z.union([runListResponseSchema, z.array(workflowRunSchema)]);
+
+export const localConnectorSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  paired: z.boolean(),
+  online: z.boolean(),
+  modelFast: z.string(),
+  modelBalanced: z.string(),
+  modelHigh: z.string(),
+  pairedAt: z.string().nullable(),
+  lastSeenAt: z.string().nullable(),
+  updatedAt: z.string(),
+});
+
+export const localConnectorEnvelopeSchema = z.object({ connector: localConnectorSummarySchema.nullable() });
+export const localConnectorPairingSchema = z.object({
+  connector: localConnectorSummarySchema,
+  pairingCode: z.string(),
+  expiresAt: z.string(),
+});
+export const localConnectorPairingInputSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  modelFast: modelIdSchema,
+  modelBalanced: modelIdSchema,
+  modelHigh: modelIdSchema,
+});
+
+export const workflowHandoffSchema = z.object({
+  id: z.string().uuid(),
+  sourceRunId: z.string().uuid(),
+  target: z.enum(["work-item", "meeting-actions", "status-update"]),
+  status: z.enum(["draft", "converted"]),
+  draftInput: z.record(jsonValueSchema),
+  targetRunId: z.string().uuid().nullable(),
+  createdAt: z.string(),
+  convertedAt: z.string().nullable(),
+});
+export const createHandoffInputSchema = z.object({ target: z.enum(["work-item", "meeting-actions", "status-update"]) });
+
+export const workItemStatusSchema = z.enum(["todo", "in-progress", "blocked", "done"]);
+export const workItemSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  description: z.string(),
+  kind: z.enum(["engineering", "verification", "investigation", "follow-up"]),
+  status: workItemStatusSchema,
+  assignee_id: z.string(),
+  due_date: z.string().nullable(),
+  source_run_id: z.string().uuid().nullable(),
+  source_handoff_id: z.string().uuid().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export const workItemListSchema = z.object({ items: z.array(workItemSchema) });
+export const createWorkItemInputSchema = z.object({
+  handoffId: z.string().uuid().nullable().optional(),
+  title: z.string().trim().min(3).max(200),
+  description: z.string().trim().min(12).max(6000),
+  kind: z.enum(["engineering", "verification", "investigation", "follow-up"]),
+  assigneeId: z.string().trim().max(64),
+  dueDate: z.string().date().nullable().optional(),
+});
+export const updateWorkItemInputSchema = z.object({ status: workItemStatusSchema });
 
 export function parseApiResponse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);

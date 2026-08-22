@@ -37,11 +37,13 @@ const emptyInput: BugTriageInput = {
 export function BugTriageForm({
   onSubmitResult,
   mode,
+  initialValues,
 }: {
   onSubmitResult: (input: BugTriageInput) => Promise<void> | void;
   mode: AppMode;
+  initialValues?: BugTriageInput;
 }) {
-  const [inputMode, setInputMode] = useState<WorkflowInputMode>("simple");
+  const [inputMode, setInputMode] = useState<WorkflowInputMode>(initialValues?.inputMode ?? "simple");
   const {
     register,
     control,
@@ -51,7 +53,7 @@ export function BugTriageForm({
     formState: { errors, isSubmitting },
   } = useForm<BugTriageInput>({
     resolver: zodResolver(bugTriageInputSchema),
-    defaultValues: emptyInput,
+    defaultValues: initialValues ?? emptyInput,
   });
   const { fields, append, remove } = useFieldArray({ control, name: "evidence" });
 

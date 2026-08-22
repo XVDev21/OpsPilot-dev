@@ -22,6 +22,7 @@ class WorkflowRunSchema(ModelSchema):
             "id",
             "workflow_id",
             "status",
+            "execution_phase",
             "input_json",
             "result_json",
             "error_code",
@@ -45,10 +46,11 @@ class RunListResponse(Schema):
 
 
 class RunOptions(Schema):
-    provider: Literal["gemini", "openai", "qwen"] | None = None
+    provider: Literal["gemini", "openai", "qwen", "bedrock", "custom", "local"] | None = None
     intelligence: Literal["fast", "balanced", "high"] | None = None
 
 
 class CreateWorkflowRunRequest(Schema):
     input: dict[str, Any]
     options: RunOptions | None = None
+    handoffId: UUID | None = None

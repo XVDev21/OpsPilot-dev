@@ -8,10 +8,10 @@ export function resultToText(result: DemoResult) {
   return JSON.stringify(result.output, null, 2);
 }
 
-export function WorkflowResultContent({ result }: { result: DemoResult }) {
+export function WorkflowResultContent({ result, sourceRunId = null, mode = "demo" }: { result: DemoResult; sourceRunId?: string | null; mode?: "live" | "demo" }) {
   switch (result.workflowId) {
     case "bug-triage":
-      return <BugResult output={result.output as BugTriageOutput} />;
+      return <BugResult output={result.output as BugTriageOutput} sourceRunId={sourceRunId} mode={mode} />;
     case "meeting-actions":
       return <MeetingResult output={result.output as MeetingActionsOutput} />;
     case "status-update":

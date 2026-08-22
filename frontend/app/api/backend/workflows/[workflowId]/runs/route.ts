@@ -60,15 +60,14 @@ export async function POST(request: Request, { params }: WorkflowRunRouteProps) 
       );
     }
 
-    return Response.json(
-      await djangoApi.createRun(
-        accessToken,
-        workflowId,
-        validatedInput.data,
-        validatedRequest.data.options,
-      ),
-      { status: 201 },
+    const run = await djangoApi.createRun(
+      accessToken,
+      workflowId,
+      validatedInput.data,
+      validatedRequest.data.options,
+      validatedRequest.data.handoffId,
     );
+    return Response.json(run, { status: run.status === "pending" ? 202 : 201 });
   } catch (error) {
     return apiErrorResponse(error);
   }

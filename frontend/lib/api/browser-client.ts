@@ -5,6 +5,11 @@ import {
   parseApiResponse,
   providerCredentialListSchema,
   providerCredentialSummarySchema,
+  localConnectorEnvelopeSchema,
+  localConnectorPairingSchema,
+  workflowHandoffSchema,
+  workItemListSchema,
+  workItemSchema,
   runListResponseSchema,
   workflowRunSchema,
 } from "@/lib/api/schemas";
@@ -87,15 +92,73 @@ export const browserApi = {
     workflowId: WorkflowId,
     input: unknown,
     options: { provider: AIProvider; intelligence: IntelligenceLevel },
+    handoffId?: string | null,
   ) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/api/backend/workflows/${workflowId}/runs`, {
         method: "POST",
-        body: JSON.stringify({ input, options }),
+        body: JSON.stringify({ input, options, ...(handoffId ? { handoffId } : {}) }),
       }),
     );
   },
   deleteRun: (runId: string) =>
     request<void>(`/api/backend/runs/${encodeURIComponent(runId)}`, { method: "DELETE" }),
+  async getLocalConnector() {
+    return parseApiResponse(
+      localConnectorEnvelopeSchema,
+      await request<unknown>("/api/backend/local-connector"),
+    );
+  },
+  async createLocalConnectorPairing(input: { name: string; modelFast: string; modelBalanced: string; modelHigh: string }) {
+    return parseApiResponse(
+      localConnectorPairingSchema,
+      await request<unknown>("/api/backend/local-connector/pairing", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  deleteLocalConnector: (connectorId: string) =>
+    request<void>(`/api/backend/local-connector/${encodeURIComponent(connectorId)}`, { method: "DELETE" }),
+  async createHandoff(runId: string, target: "work-item" | "meeting-actions" | "status-update") {
+    return parseApiResponse(
+      workflowHandoffSchema,
+      await request<unknown>(`/api/backend/runs/${encodeURIComponent(runId)}/handoffs`, {
+        method: "POST",
+        body: JSON.stringify({ target }),
+      }),
+    );
+  },
+  async getHandoff(handoffId: string) {
+    return parseApiResponse(
+      workflowHandoffSchema,
+      await request<unknown>(`/api/backend/handoffs/${encodeURIComponent(handoffId)}`),
+    );
+  },
+  async listWorkItems() {
+    return parseApiResponse(workItemListSchema, await request<unknown>("/api/backend/work-items"));
+  },
+  async createWorkItem(input: {
+    handoffId?: string | null;
+    title: string;
+    description: string;
+    kind: "engineering" | "verification" | "investigation" | "follow-up";
+    assigneeId: string;
+    dueDate?: string | null;
+  }) {
+    return parseApiResponse(
+      workItemSchema,
+      await request<unknown>("/api/backend/work-items", { method: "POST", body: JSON.stringify(input) }),
+    );
+  },
+  async updateWorkItemStatus(itemId: string, status: "todo" | "in-progress" | "blocked" | "done") {
+    return parseApiResponse(
+      workItemSchema,
+      await request<unknown>(`/api/backend/work-items/${encodeURIComponent(itemId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    );
+  },
 };

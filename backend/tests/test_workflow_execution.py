@@ -262,4 +262,30 @@ def test_execution_options_report_provider_availability(authenticated_client: Cl
             "credentialSource": None,
             "supportsPersonalKey": True,
         },
+        {
+            "id": "bedrock",
+            "label": "Amazon Bedrock",
+            "description": (
+                "AWS-hosted foundation models through a personal Bedrock bearer API key."
+            ),
+            "enabled": False,
+            "credentialSource": None,
+            "supportsPersonalKey": True,
+        },
+        {
+            "id": "custom",
+            "label": "OpenAI-compatible",
+            "description": "A public HTTPS endpoint with account-owned model routing.",
+            "enabled": False,
+            "credentialSource": None,
+            "supportsPersonalKey": True,
+        },
+        {
+            "id": "local",
+            "label": "Local connector",
+            "description": "Ollama, LM Studio, or vLLM through an outbound paired connector.",
+            "enabled": False,
+            "credentialSource": None,
+            "supportsPersonalKey": False,
+        },
     ]

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from django.conf import settings
 
 from accounts.models import AppUser
+from ai.providers.bedrock import BedrockProvider
+from ai.providers.compatible import OpenAICompatibleProvider
 from ai.providers.gemini import GeminiProvider
 from ai.providers.openai import OpenAIProvider
 from ai.providers.qwen import QwenProvider
@@ -14,7 +16,9 @@ from ai.types import (
     ProviderFailure,
     ProviderName,
 )
-from integrations.models import ProviderCredential
+from integrations.connectors import connector_for_user
+from integrations.models import LocalConnector, ProviderCredential
+from integrations.network import validate_public_https_base_url
 from integrations.services import personal_credential_for_user
 
 _WORKSPACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])$")
@@ -25,6 +29,7 @@ class ProviderDefinition:
     id: ProviderName
     label: str
     description: str
+    supports_personal_key: bool = True
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,22 @@ PROVIDER_CATALOG = (
         id="qwen",
         label="Qwen",
         description="Alibaba Cloud Model Studio through its OpenAI-compatible API.",
+    ),
+    ProviderDefinition(
+        id="bedrock",
+        label="Amazon Bedrock",
+        description="AWS-hosted foundation models through a personal Bedrock bearer API key.",
+    ),
+    ProviderDefinition(
+        id="custom",
+        label="OpenAI-compatible",
+        description="A public HTTPS endpoint with account-owned model routing.",
+    ),
+    ProviderDefinition(
+        id="local",
+        label="Local connector",
+        description="Ollama, LM Studio, or vLLM through an outbound paired connector.",
+        supports_personal_key=False,
     ),
 )
 
@@ -79,10 +100,15 @@ def _platform_key(provider: ProviderName) -> str:
         "gemini": settings.GEMINI_API_KEY,
         "openai": settings.OPENAI_API_KEY,
         "qwen": settings.QWEN_API_KEY,
+        "bedrock": "",
+        "custom": "",
+        "local": "",
     }[provider]
 
 
 def _platform_provider_is_enabled(provider: ProviderName) -> bool:
+    if provider in {"bedrock", "custom", "local"}:
+        return False
     if provider not in settings.AI_PLATFORM_PROVIDERS:
         return False
     if not _platform_key(provider):
@@ -97,6 +123,9 @@ def _platform_provider_is_enabled(provider: ProviderName) -> bool:
 
 
 def provider_is_enabled(provider: ProviderName, *, user: AppUser | None = None) -> bool:
+    if provider == "local":
+        connector = connector_for_user(user) if user is not None else None
+        return bool(connector and connector.token_digest and connector.paired_at)
     if (
         user is not None
         and ProviderCredential.objects.filter(user=user, provider=provider).exists()
@@ -106,12 +135,21 @@ def provider_is_enabled(provider: ProviderName, *, user: AppUser | None = None) 
 
 
 def credential_source_for(provider: ProviderName, *, user: AppUser) -> CredentialSource | None:
+    if provider == "local":
+        return "connector" if provider_is_enabled(provider, user=user) else None
     if ProviderCredential.objects.filter(user=user, provider=provider).exists():
         return "personal"
     return "platform" if _platform_provider_is_enabled(provider) else None
 
 
 def get_provider(*, provider: ProviderName, user: AppUser) -> ResolvedProvider:
+    if provider == "local":
+        raise ProviderFailure(
+            code="LOCAL_CONNECTOR_REQUIRED",
+            message="This workflow must be claimed by the paired local connector.",
+            status=409,
+            retryable=True,
+        )
     personal = personal_credential_for_user(user=user, provider=provider)
     if personal is not None:
         api_key = personal.api_key
@@ -144,10 +182,24 @@ def get_provider(*, provider: ProviderName, user: AppUser) -> ResolvedProvider:
             api_key=api_key,
             timeout_seconds=settings.AI_REQUEST_TIMEOUT_SECONDS,
         )
-    else:
+    elif provider == "qwen":
         adapter = QwenProvider(
             api_key=api_key,
             base_url=qwen_base_url(region=qwen_region, workspace_id=qwen_workspace_id),
+            timeout_seconds=settings.AI_REQUEST_TIMEOUT_SECONDS,
+        )
+    elif provider == "bedrock":
+        adapter = BedrockProvider(
+            api_key=api_key,
+            region=personal.aws_region if personal is not None else "",
+            timeout_seconds=settings.AI_REQUEST_TIMEOUT_SECONDS,
+        )
+    else:
+        adapter = OpenAICompatibleProvider(
+            api_key=api_key,
+            base_url=validate_public_https_base_url(
+                personal.base_url if personal is not None else ""
+            ),
             timeout_seconds=settings.AI_REQUEST_TIMEOUT_SECONDS,
         )
     return ResolvedProvider(
@@ -157,8 +209,49 @@ def get_provider(*, provider: ProviderName, user: AppUser) -> ResolvedProvider:
     )
 
 
-def model_for(provider: ProviderName, intelligence: IntelligenceLevel) -> str:
+def model_for(
+    provider: ProviderName,
+    intelligence: IntelligenceLevel,
+    *,
+    user: AppUser | None = None,
+) -> str:
+    if provider == "local":
+        connector = connector_for_user(user) if user is not None else None
+        if connector is None or not connector.token_digest:
+            raise ProviderFailure(
+                code="AI_AUTH_ERROR",
+                message="Pair a local connector before selecting local models.",
+                status=503,
+                retryable=False,
+            )
+        return _connector_model(connector, intelligence)
+    if provider in {"bedrock", "custom"}:
+        credential = (
+            ProviderCredential.objects.filter(user=user, provider=provider).first()
+            if user is not None
+            else None
+        )
+        if credential is None:
+            raise ProviderFailure(
+                code="AI_AUTH_ERROR",
+                message="Configure this model connection before running a workflow.",
+                status=503,
+                retryable=False,
+            )
+        return {
+            "fast": credential.model_fast,
+            "balanced": credential.model_balanced,
+            "high": credential.model_high,
+        }[intelligence]
     return settings.AI_MODEL_MAP[provider][intelligence]
+
+
+def _connector_model(connector: LocalConnector, intelligence: IntelligenceLevel) -> str:
+    return {
+        "fast": connector.model_fast,
+        "balanced": connector.model_balanced,
+        "high": connector.model_high,
+    }[intelligence]
 
 
 def max_output_tokens_for(intelligence: IntelligenceLevel) -> int:

@@ -31,6 +31,12 @@ describe("provider credential vault", () => {
         keyFingerprint: "1a2b3c4d5e6f",
         endpointRegion: "singapore",
         workspaceId: "ws-opspilot-01",
+        displayName: null,
+        baseUrl: null,
+        awsRegion: null,
+        modelFast: null,
+        modelBalanced: null,
+        modelHigh: null,
         updatedAt: "2026-08-20T09:00:00Z",
       }),
     );
@@ -86,7 +92,9 @@ describe("provider credential vault", () => {
     expect(screen.getByRole("heading", { name: "Gemini" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "OpenAI · Personal key" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Qwen" })).toBeInTheDocument();
-    expect(screen.getAllByText("Status unavailable")).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Amazon Bedrock" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "OpenAI-compatible" })).toBeInTheDocument();
+    expect(screen.getAllByText("Status unavailable")).toHaveLength(5);
 
     const geminiCard = screen.getByRole("heading", { name: "Gemini" }).closest("article");
     expect(geminiCard).not.toBeNull();

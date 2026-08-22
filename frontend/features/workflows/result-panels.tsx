@@ -4,6 +4,7 @@ import type { BugTriageOutput } from "@/features/workflows/bug-triage/schema";
 import type { MeetingActionsOutput } from "@/features/workflows/meeting-actions/schema";
 import type { StatusUpdateOutput } from "@/features/workflows/status-update/schema";
 import { getSampleTeamMember } from "@/lib/collaboration/sample-team";
+import { HandoffActions } from "@/features/workflows/handoff-actions";
 
 function ResultSection({
   title,
@@ -38,7 +39,7 @@ function ResultList({ items }: { items: readonly string[] }) {
   );
 }
 
-export function BugResult({ output }: { output: BugTriageOutput }) {
+export function BugResult({ output, sourceRunId = null, mode = "demo" }: { output: BugTriageOutput; sourceRunId?: string | null; mode?: "live" | "demo" }) {
   const confidence = Math.round(output.confidence * 100);
   const owner = output.routing.ownerId ? getSampleTeamMember(output.routing.ownerId) : null;
   const disposition = {
@@ -98,6 +99,7 @@ export function BugResult({ output }: { output: BugTriageOutput }) {
         </p>
         <p className="mt-1.5">{output.humanReviewNotice}</p>
       </div>
+      {mode === "live" && sourceRunId ? <HandoffActions sourceRunId={sourceRunId} issueType={output.issueType} /> : null}
     </div>
   );
 }

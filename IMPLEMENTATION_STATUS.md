@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Production Live authentication recovery + resilient provider vault
-**Status:** Hotfix verified locally and in production; draft PR open
+**Current milestone:** Observable Live workflows + governed model connectivity + delivery handoffs
+**Status:** Implementation complete; release gates passed; draft PR ready
 
 ## Milestones
 
@@ -14,8 +14,45 @@
 - [x] Backend Part 2 - provider-neutral workflow engine
 - [x] Live Mode - encrypted personal Gemini/OpenAI/Qwen integrations
 - [x] Simple/Advanced workflow intake + fictional sample delivery pod
+- [x] Observable execution phases and real elapsed-time feedback
+- [x] Personal Bedrock, governed compatible API, and outbound local-model connections
+- [x] Human-reviewed Bug Triage handoffs and personal Work Items
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Observable workflows, model connectivity, and delivery handoffs
+
+- [x] persist truthful run phases from queue/preparation through validation, save, completion, or
+  failure and show a real elapsed timer without fake progress percentages
+- [x] support Amazon Bedrock bearer API keys, approved AWS Regions, exact three-tier model mappings,
+  Converse structured output, and safe provider error normalization
+- [x] add governed public HTTPS OpenAI-compatible connections with encrypted credentials, explicit
+  tier mappings, DNS/IP validation, redirect refusal, and no per-run URL/model override
+- [x] add a ten-minute one-time pairing flow and outbound connector for loopback/private Ollama,
+  LM Studio, vLLM, or another OpenAI-compatible local model host
+- [x] persist connector jobs and leases in PostgreSQL; store connector authorization only as a
+  one-way digest and schema-validate every returned result
+- [x] add explicit Bug Triage actions for reviewed Work Items, Meeting Actions, and Work Status
+- [x] add a personal four-state Work Items board with editable scope, type, sample owner, and due date
+- [x] retain source-run/handoff lineage and keep all drafts/items scoped to the authenticated owner
+- [x] document deployment order, Bedrock requirements, local connector setup, residual endpoint
+  egress risk, and the no-Redis/no-worker decision for the personal preview
+
+```text
+backend Ruff            PASS - 86 files formatted, zero lint findings
+Django checks           PASS - migrations current, local and production deploy checks
+backend dependencies    PASS - pip check found no broken requirements
+backend tests           PASS - 103 tests, 90.42% branch coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 16 files, 42 tests
+frontend build          PASS - Next.js 16.3, 33 generated routes/assets
+browser verification    PASS - 1440 desktop, 390x844 mobile, light/dark/system, reduced motion,
+                          all three Demo workflows, Simple/Advanced, mobile navigation, zero
+                          overflow, zero console/page errors, zero automated WCAG A/AA violations
+security diff scan      PASS AFTER REMEDIATION - all 61 changed runtime/contract files reviewed;
+                          one medium custom-provider redirect issue found, fixed, and regression-tested
+```
 
 ## Production Live authentication recovery + resilient provider vault hotfix
 

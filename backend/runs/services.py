@@ -13,8 +13,9 @@ from ai.prompts import compile_prompt
 from ai.providers.registry import get_provider, max_output_tokens_for, model_for
 from ai.types import AIProvider, IntelligenceLevel, ProviderFailure, ProviderName
 from common.errors import OpsPilotError
+from integrations.connectors import connector_for_user
 from integrations.services import mark_credential_used
-from runs.models import WorkflowRun
+from runs.models import LocalConnectorJob, WorkflowRun
 from runs.selectors import run_for_user
 from workflows.registry import WorkflowDefinition
 
@@ -53,6 +54,11 @@ def reserve_run(
         user=locked_user,
         workflow_id=workflow.id,
         status=WorkflowRun.Status.PENDING,
+        execution_phase=(
+            WorkflowRun.ExecutionPhase.QUEUED
+            if provider_name == "local"
+            else WorkflowRun.ExecutionPhase.PREPARING
+        ),
         input_json=input_json,
         provider=provider_name,
         model=model,
@@ -64,10 +70,19 @@ def reserve_run(
 
 def finish_failed_run(*, run: WorkflowRun, code: str, started_at: float) -> None:
     run.status = WorkflowRun.Status.FAILED
+    run.execution_phase = WorkflowRun.ExecutionPhase.FAILED
     run.error_code = code
     run.duration_ms = max(0, round((monotonic() - started_at) * 1000))
     run.completed_at = timezone.now()
-    run.save(update_fields=["status", "error_code", "duration_ms", "completed_at"])
+    run.save(
+        update_fields=[
+            "status",
+            "execution_phase",
+            "error_code",
+            "duration_ms",
+            "completed_at",
+        ]
+    )
 
 
 def execute_workflow_run(
@@ -79,7 +94,15 @@ def execute_workflow_run(
     intelligence: IntelligenceLevel,
     provider: AIProvider | None = None,
 ) -> WorkflowRun:
-    model = model_for(provider_name, intelligence)
+    try:
+        model = model_for(provider_name, intelligence, user=user)
+    except ProviderFailure as exc:
+        raise OpsPilotError(
+            code=exc.code,
+            message=exc.message,
+            status=exc.status,
+            retryable=exc.retryable,
+        ) from exc
     input_json = validated_input.model_dump(mode="json", by_alias=True)
     run = reserve_run(
         user=user,
@@ -91,7 +114,23 @@ def execute_workflow_run(
     )
     started_at = monotonic()
 
+    if provider_name == "local":
+        connector = connector_for_user(user)
+        if connector is None or not connector.token_digest:
+            finish_failed_run(run=run, code="AI_AUTH_ERROR", started_at=started_at)
+            raise OpsPilotError(
+                code="AI_AUTH_ERROR",
+                message="Pair a local connector before selecting local models.",
+                status=503,
+            )
+        run.credential_source = WorkflowRun.CredentialSource.CONNECTOR
+        run.save(update_fields=["credential_source"])
+        LocalConnectorJob.objects.create(run=run, connector=connector)
+        return run
+
     try:
+        run.execution_phase = WorkflowRun.ExecutionPhase.GENERATING
+        run.save(update_fields=["execution_phase"])
         if provider is None:
             resolved_provider = get_provider(provider=provider_name, user=user)
             active_provider = resolved_provider.adapter
@@ -112,6 +151,8 @@ def execute_workflow_run(
             output_schema=workflow.output_schema,
             max_output_tokens=max_output_tokens_for(intelligence),
         )
+        run.execution_phase = WorkflowRun.ExecutionPhase.VALIDATING
+        run.save(update_fields=["execution_phase"])
         output = workflow.output_schema.model_validate(provider_result.output).model_dump(
             mode="json", by_alias=True
         )
@@ -141,7 +182,10 @@ def execute_workflow_run(
             retryable=True,
         ) from exc
 
+    run.execution_phase = WorkflowRun.ExecutionPhase.SAVING
+    run.save(update_fields=["execution_phase"])
     run.status = WorkflowRun.Status.COMPLETED
+    run.execution_phase = WorkflowRun.ExecutionPhase.COMPLETED
     run.result_json = output
     run.input_tokens = provider_result.input_tokens
     run.output_tokens = provider_result.output_tokens
@@ -150,6 +194,7 @@ def execute_workflow_run(
     run.save(
         update_fields=[
             "status",
+            "execution_phase",
             "result_json",
             "input_tokens",
             "output_tokens",

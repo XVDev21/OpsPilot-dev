@@ -3,8 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bot,
+  Boxes,
   BrainCircuit,
   Check,
+  Cable,
   CloudOff,
   Database,
   FlaskConical,
@@ -28,6 +30,7 @@ import type { AppUser } from "@/lib/auth/types";
 import { browserApi } from "@/lib/api/browser-client";
 import { cn } from "@/lib/utils";
 import { ProviderCredentialsPanel } from "@/features/settings/provider-credentials-panel";
+import { LocalConnectorPanel } from "@/features/settings/local-connector-panel";
 
 function PreferenceChoice<T extends string>({
   value,
@@ -176,7 +179,7 @@ export function SettingsPanel({ user }: { user: AppUser }) {
 
         <fieldset className="mt-6">
           <legend className="text-sm font-bold text-foreground">Provider</legend>
-          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini is the platform-funded low-cost path. OpenAI and Qwen activate only after you connect your own encrypted API key.</p>
+          <p className="mt-1 text-xs leading-5 text-foreground-muted">Gemini is the platform-funded low-cost path. Personal cloud, Bedrock, custom HTTPS, and local connector routes activate only after you configure them below.</p>
           <div className="mt-3 grid gap-3 lg:grid-cols-3">
             <PreferenceChoice<AIProvider>
               value="gemini"
@@ -204,6 +207,33 @@ export function SettingsPanel({ user }: { user: AppUser }) {
               icon={Network}
               onSelect={setProvider}
               disabled={executionOptions.isSuccess && !enabledProviders.get("qwen")}
+            />
+            <PreferenceChoice<AIProvider>
+              value="bedrock"
+              current={provider}
+              title={executionOptions.isSuccess && !enabledProviders.get("bedrock") ? "Bedrock · Add a key" : "Amazon Bedrock"}
+              description="AWS foundation models through a region-scoped Bedrock bearer API key."
+              icon={Boxes}
+              onSelect={setProvider}
+              disabled={executionOptions.isSuccess && !enabledProviders.get("bedrock")}
+            />
+            <PreferenceChoice<AIProvider>
+              value="custom"
+              current={provider}
+              title={executionOptions.isSuccess && !enabledProviders.get("custom") ? "Custom · Configure" : "OpenAI-compatible"}
+              description="A screened public HTTPS endpoint with explicit per-tier model mapping."
+              icon={Network}
+              onSelect={setProvider}
+              disabled={executionOptions.isSuccess && !enabledProviders.get("custom")}
+            />
+            <PreferenceChoice<AIProvider>
+              value="local"
+              current={provider}
+              title={executionOptions.isSuccess && !enabledProviders.get("local") ? "Local · Pair connector" : "Local connector"}
+              description="Ollama, LM Studio, or vLLM through an outbound connector on your network."
+              icon={Cable}
+              onSelect={setProvider}
+              disabled={executionOptions.isSuccess && !enabledProviders.get("local")}
             />
           </div>
         </fieldset>
@@ -248,6 +278,7 @@ export function SettingsPanel({ user }: { user: AppUser }) {
       </section>
 
       <ProviderCredentialsPanel />
+      <LocalConnectorPanel />
     </div>
   );
 }
