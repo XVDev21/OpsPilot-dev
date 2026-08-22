@@ -44,7 +44,7 @@ describe("live API contracts", () => {
   it("accepts masked personal-provider credential status without exposing API keys", () => {
     const parsed = providerCredentialListSchema.parse(providerCredentialsFixture);
 
-    expect(parsed.items).toHaveLength(3);
+    expect(parsed.items).toHaveLength(5);
     expect(parsed.items.find((item) => item.provider === "openai")).toMatchObject({
       configured: true,
       keyFingerprint: "63d0c8eb9a10",

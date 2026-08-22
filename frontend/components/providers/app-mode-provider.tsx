@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
 export type AppMode = "live" | "demo";
-export type AIProvider = "gemini" | "openai" | "qwen";
+export type AIProvider = "gemini" | "openai" | "qwen" | "bedrock" | "custom" | "local";
 export type IntelligenceLevel = "fast" | "balanced" | "high";
 
 interface AppModeContextValue {
@@ -16,7 +16,7 @@ interface AppModeContextValue {
 }
 
 const modeStorageKey = "opspilot:mode:v1";
-const providerStorageKey = "opspilot:provider:v2";
+const providerStorageKey = "opspilot:provider:v3";
 const intelligenceStorageKey = "opspilot:intelligence:v1";
 const preferenceChangeEvent = "opspilot:preferences-change";
 const AppModeContext = createContext<AppModeContextValue | null>(null);
@@ -36,7 +36,9 @@ function readMode(): AppMode {
 
 function readProvider(): AIProvider {
   const saved = getModeStorage()?.getItem(providerStorageKey);
-  return saved === "openai" || saved === "qwen" ? saved : "gemini";
+  return saved === "openai" || saved === "qwen" || saved === "bedrock" || saved === "custom" || saved === "local"
+    ? saved
+    : "gemini";
 }
 
 function readIntelligence(): IntelligenceLevel {

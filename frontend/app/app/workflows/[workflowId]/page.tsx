@@ -9,6 +9,7 @@ import { WorkflowIcon } from "@/features/workflows/workflow-icon";
 
 interface WorkflowPageProps {
   params: Promise<{ workflowId: string }>;
+  searchParams: Promise<{ handoff?: string }>;
 }
 
 export function generateStaticParams() {
@@ -22,8 +23,8 @@ export async function generateMetadata({ params }: WorkflowPageProps): Promise<M
   return { title: workflow.title, description: workflow.description };
 }
 
-export default async function WorkflowPage({ params }: WorkflowPageProps) {
-  const { workflowId } = await params;
+export default async function WorkflowPage({ params, searchParams }: WorkflowPageProps) {
+  const [{ workflowId }, query] = await Promise.all([params, searchParams]);
   if (!isWorkflowId(workflowId)) notFound();
   const workflow = getWorkflow(workflowId);
 
@@ -62,7 +63,7 @@ export default async function WorkflowPage({ params }: WorkflowPageProps) {
         </div>
       </div>
 
-      <ManagedWorkflowRunner workflowId={workflowId} />
+      <ManagedWorkflowRunner workflowId={workflowId} handoffId={query.handoff ?? null} />
     </div>
   );
 }

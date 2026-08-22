@@ -27,7 +27,7 @@ def execution_options(request):
                 "description": provider.description,
                 "enabled": provider_is_enabled(provider.id, user=request.auth.user),
                 "credentialSource": credential_source_for(provider.id, user=request.auth.user),
-                "supportsPersonalKey": True,
+                "supportsPersonalKey": provider.supports_personal_key,
             }
             for provider in PROVIDER_CATALOG
         ],

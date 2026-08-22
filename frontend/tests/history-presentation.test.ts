@@ -7,6 +7,7 @@ function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
     id: "run_123",
     workflow_id: "meeting-actions",
     status: "completed",
+    execution_phase: "completed",
     input_json: { title: "Quarterly planning" },
     result_json: { summary: "Owners and deadlines are ready." },
     error_code: null,

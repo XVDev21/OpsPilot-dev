@@ -1,9 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { AlertTriangle, FileCheck2, LoaderCircle, LockKeyhole, LogIn, RefreshCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useAppMode,
   type AIProvider,
@@ -13,13 +13,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BugTriageForm } from "@/features/workflows/bug-triage/form";
-import type { BugTriageInput } from "@/features/workflows/bug-triage/schema";
+import { bugTriageInputSchema, type BugTriageInput } from "@/features/workflows/bug-triage/schema";
 import { CopyResultButton } from "@/features/workflows/copy-result-button";
 import { MeetingActionsForm } from "@/features/workflows/meeting-actions/form";
-import type { MeetingActionsInput } from "@/features/workflows/meeting-actions/schema";
+import { meetingActionsInputSchema, type MeetingActionsInput } from "@/features/workflows/meeting-actions/schema";
 import { runToResult } from "@/features/workflows/run-adapter";
 import { StatusUpdateForm } from "@/features/workflows/status-update/form";
-import type { StatusUpdateInput } from "@/features/workflows/status-update/schema";
+import { statusUpdateInputSchema, type StatusUpdateInput } from "@/features/workflows/status-update/schema";
 import type { WorkflowId } from "@/features/workflows/types";
 import { resultToText, WorkflowResultContent } from "@/features/workflows/workflow-result";
 import { browserApi } from "@/lib/api/browser-client";
@@ -32,12 +32,16 @@ type RunMetadata = {
   intelligence: IntelligenceLevel;
   inputTokens: number | null;
   outputTokens: number | null;
+  runId: string;
 };
 
 const providerLabels: Record<AIProvider, string> = {
   gemini: "Gemini",
   openai: "OpenAI",
   qwen: "Qwen",
+  bedrock: "Amazon Bedrock",
+  custom: "Custom model",
+  local: "Local connector",
 };
 const intelligenceLabels: Record<IntelligenceLevel, string> = {
   fast: "Efficient",
@@ -49,18 +53,82 @@ function WorkflowForm({
   workflowId,
   mode,
   onSubmit,
+  initialInput,
 }: {
   workflowId: WorkflowId;
   mode: AppMode;
   onSubmit: (input: WorkflowInput) => Promise<void>;
+  initialInput?: WorkflowInput;
 }) {
   if (workflowId === "bug-triage") {
-    return <BugTriageForm mode={mode} onSubmitResult={onSubmit} />;
+    return <BugTriageForm mode={mode} onSubmitResult={onSubmit} initialValues={initialInput as BugTriageInput | undefined} />;
   }
   if (workflowId === "meeting-actions") {
-    return <MeetingActionsForm mode={mode} onSubmitResult={onSubmit} />;
+    return <MeetingActionsForm mode={mode} onSubmitResult={onSubmit} initialValues={initialInput as MeetingActionsInput | undefined} />;
   }
-  return <StatusUpdateForm mode={mode} onSubmitResult={onSubmit} />;
+  return <StatusUpdateForm mode={mode} onSubmitResult={onSubmit} initialValues={initialInput as StatusUpdateInput | undefined} />;
+}
+
+function parseHandoffInput(workflowId: WorkflowId, value: unknown): WorkflowInput | undefined {
+  const schema = workflowId === "bug-triage"
+    ? bugTriageInputSchema
+    : workflowId === "meeting-actions"
+      ? meetingActionsInputSchema
+      : statusUpdateInputSchema;
+  const parsed = schema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function ExecutionProgress({ provider, startedAt, phase }: { provider: AIProvider; startedAt: number; phase: string }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    const update = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
+  const local = provider === "local";
+  const activeStep = phase === "queued" || phase === "preparing" ? 1 : phase === "generating" ? 1 : 2;
+  const steps = [
+    "Input secured",
+    local && phase === "queued" ? "Connector queued" : "Provider generating",
+    "Validate & save",
+  ];
+  return (
+    <div className="m-4 overflow-hidden rounded-2xl border border-primary/20 bg-surface-accent sm:m-5" role="status" aria-live="polite">
+      <div className="flex items-start gap-4 p-5 sm:p-6">
+        <span className="relative grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+          <span className="absolute inset-0 animate-ping rounded-xl border border-primary/25 opacity-40 motion-reduce:animate-none" />
+          <LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-base font-bold text-foreground">{local && phase === "queued" ? "Waiting for your local connector" : `${providerLabels[provider]} is processing the workflow`}</h3>
+            <span className="font-mono text-xs font-bold text-primary">{elapsedSeconds}s</span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-foreground-muted">{local ? "Keep the paired connector running. The result will be schema-validated before it appears here." : "The request is active. OpsPilot will validate and save the provider result before displaying it."}</p>
+          <ol className="mt-5 grid gap-2 sm:grid-cols-3">
+            {steps.map((label, index) => (
+              <li
+                key={label}
+                aria-current={index === activeStep ? "step" : undefined}
+                className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors ${
+                  index < activeStep
+                    ? "border-success/20 bg-success/8 text-foreground"
+                    : index === activeStep
+                      ? "border-primary/30 bg-surface-raised text-foreground shadow-[var(--shadow-xs)]"
+                      : "border-border bg-surface-soft text-foreground-muted"
+                }`}
+              >
+                <span className="font-mono text-[0.65rem] text-primary">0{index + 1}</span>{label}
+              </li>
+            ))}
+          </ol>
+          {elapsedSeconds >= 20 ? <p className="mt-4 text-xs leading-5 text-foreground-soft">Still working—larger models and cold services can take longer. This timer measures real elapsed time; it is not a completion estimate.</p> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ErrorPanel({ error, onRetry }: { error: ApiError; onRetry: (() => void) | null }) {
@@ -112,35 +180,59 @@ function WorkflowRunnerCore({
   mode,
   provider,
   intelligence,
+  handoffId,
 }: {
   workflowId: WorkflowId;
   mode: AppMode;
   provider: AIProvider;
   intelligence: IntelligenceLevel;
+  handoffId: string | null;
 }) {
   const [result, setResult] = useState<DemoResult | null>(null);
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [lastInput, setLastInput] = useState<WorkflowInput | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [executionPhase, setExecutionPhase] = useState("preparing");
   const reduceMotion = useReducedMotion();
   const queryClient = useQueryClient();
+  const handoff = useQuery({
+    queryKey: ["handoff", handoffId],
+    queryFn: () => browserApi.getHandoff(handoffId as string),
+    enabled: Boolean(handoffId),
+  });
   const liveMutation = useMutation({
     mutationFn: (input: WorkflowInput) =>
-      browserApi.createRun(workflowId, input, { provider, intelligence }),
+      browserApi.createRun(workflowId, input, { provider, intelligence }, handoffId),
   });
 
   async function execute(input: WorkflowInput) {
     setLastInput(input);
     setError(null);
+    setStartedAt(Date.now());
+    setExecutionPhase(provider === "local" ? "preparing" : "generating");
     if (mode === "demo") {
       setRunMetadata(null);
       setResult(runDemoWorkflow(workflowId, input));
+      setStartedAt(null);
       return;
     }
 
     setResult(null);
     try {
-      const run = await liveMutation.mutateAsync(input);
+      let run = await liveMutation.mutateAsync(input);
+      setExecutionPhase(run.execution_phase);
+      for (let attempt = 0; run.status === "pending" && attempt < 80; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        run = await browserApi.getRun(run.id);
+        setExecutionPhase(run.execution_phase);
+      }
+      if (run.status === "pending") {
+        throw new ApiError({ code: "API_TIMEOUT", message: "The workflow is still pending. Check History after confirming that your connector is online.", retryable: true }, 504);
+      }
+      if (run.status === "failed") {
+        throw new ApiError({ code: run.error_code ?? "AI_UNAVAILABLE", message: "The model could not complete this workflow. Review the connection and retry.", retryable: true }, 502);
+      }
       const nextResult = runToResult(run);
       if (!nextResult) {
         throw new ApiError({
@@ -156,6 +248,7 @@ function WorkflowRunnerCore({
         intelligence,
         inputTokens: run.input_tokens,
         outputTokens: run.output_tokens,
+        runId: run.id,
       });
       await queryClient.invalidateQueries({ queryKey: ["runs"] });
     } catch (caught) {
@@ -168,12 +261,20 @@ function WorkflowRunnerCore({
               retryable: true,
             }),
       );
+    } finally {
+      setStartedAt(null);
     }
   }
 
+  const initialInput = handoff.data ? parseHandoffInput(workflowId, handoff.data.draftInput) : undefined;
+
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.88fr)]">
-      <WorkflowForm workflowId={workflowId} mode={mode} onSubmit={execute} />
+      {handoffId && handoff.isPending ? (
+        <div className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-6 shadow-[var(--shadow-sm)]" role="status"><LoaderCircle aria-hidden="true" className="size-5 animate-spin text-primary motion-reduce:animate-none" /><p className="mt-4 text-sm font-semibold text-foreground">Loading the reviewed workflow draft…</p></div>
+      ) : (
+        <WorkflowForm workflowId={workflowId} mode={mode} onSubmit={execute} initialInput={initialInput} />
+      )}
 
       <section
         aria-label="Workflow result"
@@ -205,14 +306,8 @@ function WorkflowRunnerCore({
           {result ? <CopyResultButton text={resultToText(result)} /> : null}
         </div>
 
-        {liveMutation.isPending ? (
-          <div className="m-4 rounded-2xl border border-primary/20 bg-surface-accent p-5 sm:m-5 sm:p-6" role="status" aria-live="polite">
-            <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-primary motion-reduce:animate-none" />
-            <h3 className="mt-5 text-base font-bold text-foreground">Generating a structured result</h3>
-            <p className="mt-2 text-sm leading-6 text-foreground-muted">
-              Your validated input has been submitted. OpsPilot is waiting for the live API response.
-            </p>
-          </div>
+        {startedAt ? (
+          <ExecutionProgress provider={provider} startedAt={startedAt} phase={executionPhase} />
         ) : error ? (
           <ErrorPanel error={error} onRetry={lastInput ? () => void execute(lastInput) : null} />
         ) : result ? (
@@ -225,7 +320,7 @@ function WorkflowRunnerCore({
             role="status"
             aria-live="polite"
           >
-            <WorkflowResultContent result={result} />
+            <WorkflowResultContent result={result} sourceRunId={runMetadata?.runId ?? null} mode={mode} />
           </motion.div>
         ) : (
           <div className="paper-grid m-4 min-h-80 rounded-2xl border border-dashed border-border-strong p-5 sm:m-5 sm:p-6">
@@ -257,7 +352,7 @@ function WorkflowRunnerCore({
   );
 }
 
-export function ManagedWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
+export function ManagedWorkflowRunner({ workflowId, handoffId = null }: { workflowId: WorkflowId; handoffId?: string | null }) {
   const { mode, provider, intelligence } = useAppMode();
   return (
     <WorkflowRunnerCore
@@ -266,6 +361,7 @@ export function ManagedWorkflowRunner({ workflowId }: { workflowId: WorkflowId }
       mode={mode}
       provider={provider}
       intelligence={intelligence}
+      handoffId={handoffId}
     />
   );
 }
@@ -277,6 +373,7 @@ export function DemoWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
       mode="demo"
       provider="gemini"
       intelligence="fast"
+      handoffId={null}
     />
   );
 }

@@ -34,11 +34,11 @@ describe("execution preferences", () => {
     await user.click(screen.getByRole("button", { name: "Use Deep" }));
 
     expect(screen.getByText("openai:high")).toBeInTheDocument();
-    expect(window.localStorage.getItem("opspilot:provider:v2")).toBe("openai");
+    expect(window.localStorage.getItem("opspilot:provider:v3")).toBe("openai");
     expect(window.localStorage.getItem("opspilot:intelligence:v1")).toBe("high");
 
     await user.click(screen.getByRole("button", { name: "Use Qwen" }));
     expect(screen.getByText("qwen:high")).toBeInTheDocument();
-    expect(window.localStorage.getItem("opspilot:provider:v2")).toBe("qwen");
+    expect(window.localStorage.getItem("opspilot:provider:v3")).toBe("qwen");
   });
 });

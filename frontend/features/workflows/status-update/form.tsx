@@ -33,11 +33,13 @@ const emptyInput: StatusUpdateInput = {
 export function StatusUpdateForm({
   onSubmitResult,
   mode,
+  initialValues,
 }: {
   onSubmitResult: (input: StatusUpdateInput) => Promise<void> | void;
   mode: AppMode;
+  initialValues?: StatusUpdateInput;
 }) {
-  const [inputMode, setInputMode] = useState<WorkflowInputMode>("simple");
+  const [inputMode, setInputMode] = useState<WorkflowInputMode>(initialValues?.inputMode ?? "simple");
   const {
     register,
     handleSubmit,
@@ -46,7 +48,7 @@ export function StatusUpdateForm({
     formState: { errors, isSubmitting },
   } = useForm<StatusUpdateInput>({
     resolver: zodResolver(statusUpdateInputSchema),
-    defaultValues: emptyInput,
+    defaultValues: initialValues ?? emptyInput,
   });
 
   function changeInputMode(nextMode: WorkflowInputMode) {

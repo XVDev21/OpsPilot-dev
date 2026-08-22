@@ -20,7 +20,7 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-Use Node.js 22.11 or newer. WorkOS AuthKit and the WorkOS Node SDK require that baseline.
+Use Node.js 24 (the production runtime pinned by this repository).
 
 ## WorkOS dashboard
 
@@ -54,4 +54,5 @@ Copy `.env.example` to the gitignored `.env.local` and provide:
 - `NEXT_PUBLIC_SITE_URL` for generated metadata such as the sitemap.
 - `NEXT_PUBLIC_API_BASE_URL` for the independently deployed Django service.
 
-Never commit `.env.local`. Gemini and other AI-provider secrets belong only in the future backend environment, not in this frontend.
+Never commit `.env.local`. AI-provider secrets belong in the backend environment or encrypted
+personal provider vault, never in this frontend.

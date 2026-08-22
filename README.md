@@ -33,15 +33,16 @@ Django
 Django Ninja
 Pydantic
 PostgreSQL production
-Gemini, OpenAI, and Qwen provider adapters with an explicit platform-provider allowlist
+Gemini, OpenAI, Qwen, Amazon Bedrock, and governed OpenAI-compatible adapters
+Outbound local connector for Ollama, LM Studio, and vLLM-compatible servers
 Encrypted per-user provider credentials
 ```
 
 The frontend and Django API are implemented. Authenticated Live Mode executes the three structured
-workflows through Gemini, OpenAI, or Qwen; deterministic Demo Mode remains backend-independent.
-Gemini is the only platform-funded provider in the current release. An authenticated user can add an
-encrypted personal Gemini, OpenAI, or Qwen credential for that provider and account; OpenAI requires
-a separately funded API project.
+workflows through Gemini, OpenAI, Qwen, Bedrock, a governed compatible endpoint, or a paired local
+connector; deterministic Demo Mode remains backend-independent. Gemini is the only platform-funded
+provider in the current release. Additional cloud credentials are encrypted per user, while local
+models remain private behind an outbound connector.
 
 ## Local development
 
@@ -68,6 +69,8 @@ See `backend/README.md` for configuration and `IMPLEMENTATION_STATUS.md` for ver
 state. The production-readiness initiatives and release gates live in
 `docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`. Live provider setup, credential rotation, and
 deployment requirements are documented in `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`.
+Observable runs, local setup, and reviewed delivery handoffs are documented in
+`docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`.
 
 ## Development environment
 
@@ -112,6 +115,7 @@ Read:
 12. `docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`
 13. `docs/10_RENDER_DEPLOYMENT_RUNBOOK.md`
 14. `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`
+15. `docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`
 
 ## Scope discipline
 

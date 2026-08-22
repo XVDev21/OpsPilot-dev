@@ -12,6 +12,7 @@ from integrations.crypto import (
     encrypt_api_key,
 )
 from integrations.models import ProviderCredential
+from integrations.network import validate_public_https_base_url
 
 SUPPORTED_PROVIDERS = tuple(ProviderCredential.Provider.values)
 QWEN_REGIONS = tuple(ProviderCredential.EndpointRegion.values)
@@ -23,6 +24,12 @@ class PersonalCredential:
     credential_id: int
     endpoint_region: str
     workspace_id: str
+    display_name: str
+    base_url: str
+    aws_region: str
+    model_fast: str
+    model_balanced: str
+    model_high: str
 
 
 def _storage_error() -> OpsPilotError:
@@ -49,9 +56,64 @@ def validate_provider_configuration(
     provider: str,
     endpoint_region: str | None,
     workspace_id: str | None,
-) -> tuple[str, str]:
+    display_name: str | None,
+    base_url: str | None,
+    aws_region: str | None,
+    model_fast: str | None,
+    model_balanced: str | None,
+    model_high: str | None,
+) -> dict[str, str]:
+    configuration = {
+        "endpoint_region": "",
+        "workspace_id": "",
+        "display_name": "",
+        "base_url": "",
+        "aws_region": "",
+        "model_fast": "",
+        "model_balanced": "",
+        "model_high": "",
+    }
+    model_values = {
+        "modelFast": model_fast or "",
+        "modelBalanced": model_balanced or "",
+        "modelHigh": model_high or "",
+    }
+    if provider == ProviderCredential.Provider.BEDROCK:
+        if not aws_region:
+            raise OpsPilotError(
+                code="VALIDATION_ERROR",
+                message="Choose the AWS Region that hosts your Bedrock models.",
+                status=422,
+                field_errors={"awsRegion": ["Choose an approved Amazon Bedrock Region."]},
+            )
+        _require_tier_models(model_values)
+        return {
+            **configuration,
+            "display_name": (display_name or "Amazon Bedrock").strip(),
+            "aws_region": aws_region,
+            "model_fast": model_fast or "",
+            "model_balanced": model_balanced or "",
+            "model_high": model_high or "",
+        }
+    if provider == ProviderCredential.Provider.CUSTOM:
+        if not base_url:
+            raise OpsPilotError(
+                code="VALIDATION_ERROR",
+                message="Enter the public HTTPS endpoint for this provider.",
+                status=422,
+                field_errors={"baseUrl": ["A public HTTPS endpoint is required."]},
+            )
+        _require_tier_models(model_values)
+        return {
+            **configuration,
+            "display_name": (display_name or "Custom model").strip(),
+            "base_url": validate_public_https_base_url(base_url),
+            "model_fast": model_fast or "",
+            "model_balanced": model_balanced or "",
+            "model_high": model_high or "",
+        }
     if provider != ProviderCredential.Provider.QWEN:
-        return "", ""
+        return configuration
 
     region = endpoint_region or ProviderCredential.EndpointRegion.SINGAPORE
     if region not in QWEN_REGIONS:
@@ -69,7 +131,26 @@ def validate_provider_configuration(
             status=422,
             field_errors={"workspaceId": ["Enter the workspace ID shown in Model Studio."]},
         )
-    return region, normalized_workspace_id
+    return {
+        **configuration,
+        "endpoint_region": region,
+        "workspace_id": normalized_workspace_id,
+    }
+
+
+def _require_tier_models(models: dict[str, str]) -> None:
+    missing = {
+        field: ["Choose a model for every intelligence level."]
+        for field, value in models.items()
+        if not value
+    }
+    if missing:
+        raise OpsPilotError(
+            code="VALIDATION_ERROR",
+            message="Map Efficient, Balanced, and Deep before saving this connection.",
+            status=422,
+            field_errors=missing,
+        )
 
 
 @transaction.atomic
@@ -80,12 +161,24 @@ def save_provider_credential(
     api_key: str,
     endpoint_region: str | None,
     workspace_id: str | None,
+    display_name: str | None = None,
+    base_url: str | None = None,
+    aws_region: str | None = None,
+    model_fast: str | None = None,
+    model_balanced: str | None = None,
+    model_high: str | None = None,
 ) -> ProviderCredential:
     provider = validate_provider_name(provider)
-    region, normalized_workspace_id = validate_provider_configuration(
+    configuration = validate_provider_configuration(
         provider=provider,
         endpoint_region=endpoint_region,
         workspace_id=workspace_id,
+        display_name=display_name,
+        base_url=base_url,
+        aws_region=aws_region,
+        model_fast=model_fast,
+        model_balanced=model_balanced,
+        model_high=model_high,
     )
     try:
         encrypted_api_key = encrypt_api_key(api_key)
@@ -98,8 +191,7 @@ def save_provider_credential(
         defaults={
             "encrypted_api_key": encrypted_api_key,
             "key_fingerprint": hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:12],
-            "endpoint_region": region,
-            "workspace_id": normalized_workspace_id,
+            **configuration,
         },
     )
     return credential
@@ -118,6 +210,12 @@ def personal_credential_for_user(*, user: AppUser, provider: str) -> PersonalCre
         credential_id=credential.pk,
         endpoint_region=credential.endpoint_region,
         workspace_id=credential.workspace_id,
+        display_name=credential.display_name,
+        base_url=credential.base_url,
+        aws_region=credential.aws_region,
+        model_fast=credential.model_fast,
+        model_balanced=credential.model_balanced,
+        model_high=credential.model_high,
     )
 
 
@@ -148,6 +246,22 @@ def credential_summaries_for_user(user: AppUser) -> list[dict]:
             ),
             "workspaceId": (
                 by_provider[provider].workspace_id or None if provider in by_provider else None
+            ),
+            "displayName": (
+                by_provider[provider].display_name or None if provider in by_provider else None
+            ),
+            "baseUrl": by_provider[provider].base_url or None if provider in by_provider else None,
+            "awsRegion": (
+                by_provider[provider].aws_region or None if provider in by_provider else None
+            ),
+            "modelFast": (
+                by_provider[provider].model_fast or None if provider in by_provider else None
+            ),
+            "modelBalanced": (
+                by_provider[provider].model_balanced or None if provider in by_provider else None
+            ),
+            "modelHigh": (
+                by_provider[provider].model_high or None if provider in by_provider else None
             ),
             "updatedAt": by_provider[provider].updated_at if provider in by_provider else None,
         }

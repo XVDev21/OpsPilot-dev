@@ -16,7 +16,8 @@ Copy-Item .env.example .env
 
 Set the real `WORKOS_CLIENT_ID`, `GEMINI_API_KEY`, and
 `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` in `backend/.env`. `OPENAI_API_KEY` and `QWEN_API_KEY` are
-optional platform credentials because users can configure personal keys from Settings. The API
+optional platform credentials because users can configure personal keys from Settings. Bedrock and
+custom compatible endpoints are personal connections only. The API
 derives the WorkOS JWKS URL from the client ID and does not need a WorkOS API key to validate access
 tokens.
 
@@ -35,12 +36,18 @@ tokens.
 - Django accepts short-lived WorkOS access tokens as Bearer credentials.
 - API routes use `/api/v1` and return a stable error envelope with request IDs.
 - SQLite is local-only; production uses PostgreSQL through `DATABASE_URL`.
-- Gemini is the default low-cost platform provider. OpenAI and Qwen are optional personal-key routes; `AI_PLATFORM_PROVIDERS` controls which shared credentials may be used.
+- Gemini is the default low-cost platform provider. OpenAI and Qwen are optional personal-key routes;
+  `AI_PLATFORM_PROVIDERS` controls which shared credentials may be used.
+- Bedrock uses a personal regional bearer key and exact tier mappings. Compatible custom providers
+  require a public HTTPS endpoint; local/private servers use the outbound connector instead.
 - Personal provider keys are encrypted at rest with a dedicated rotatable server secret, never
   returned by the API, and scoped to their authenticated owner.
 - Qwen base URLs are constructed from an approved region and workspace ID; users cannot provide an
   arbitrary endpoint or model ID.
-- Browser requests select only `fast`, `balanced`, or `high`; exact model policy remains server-side.
+- Browser runs select only `fast`, `balanced`, or `high`; exact models come from server policy or a
+  previously reviewed connection mapping, never a per-run model override.
+- Local connector jobs are durable in PostgreSQL and schema-validated before completion; this
+  personal preview does not require Redis or a separate worker.
 - Trial workflow input and result history expires after 30 days by default.
 
 ## Retention

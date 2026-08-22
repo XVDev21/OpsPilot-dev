@@ -9,6 +9,7 @@ from runs.schemas import CreateWorkflowRunRequest, RunListResponse, WorkflowRunS
 from runs.selectors import run_for_user, runs_for_user
 from runs.services import delete_run, execute_workflow_run
 from workflows.registry import get_workflow
+from workitems.services import complete_run_handoff, validate_run_handoff
 
 router = Router(tags=["runs"])
 PAGE_SIZE = 20
@@ -29,7 +30,7 @@ def input_field_errors(exc: ValidationError) -> dict[str, list[str]]:
 
 @router.post(
     "/workflows/{workflow_id}/runs",
-    response={201: WorkflowRunSchema},
+    response={201: WorkflowRunSchema, 202: WorkflowRunSchema},
     summary="Execute a workflow",
 )
 def create_run(request, workflow_id: str, payload: CreateWorkflowRunRequest):
@@ -58,6 +59,11 @@ def create_run(request, workflow_id: str, payload: CreateWorkflowRunRequest):
         if options and options.intelligence
         else settings.AI_DEFAULT_INTELLIGENCE
     )
+    validate_run_handoff(
+        user=request.auth.user,
+        handoff_id=payload.handoffId,
+        workflow_id=workflow_id,
+    )
     run = execute_workflow_run(
         user=request.auth.user,
         workflow=workflow,
@@ -65,7 +71,13 @@ def create_run(request, workflow_id: str, payload: CreateWorkflowRunRequest):
         provider_name=provider,
         intelligence=intelligence,
     )
-    return Status(201, run)
+    complete_run_handoff(
+        user=request.auth.user,
+        handoff_id=payload.handoffId,
+        workflow_id=workflow_id,
+        run=run,
+    )
+    return Status(202 if run.status == "pending" else 201, run)
 
 
 @router.get("/runs", response=RunListResponse, summary="Workflow run history")

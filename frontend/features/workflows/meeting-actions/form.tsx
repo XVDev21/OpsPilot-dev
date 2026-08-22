@@ -34,11 +34,13 @@ const emptyInput: MeetingActionsInput = {
 export function MeetingActionsForm({
   onSubmitResult,
   mode,
+  initialValues,
 }: {
   onSubmitResult: (input: MeetingActionsInput) => Promise<void> | void;
   mode: AppMode;
+  initialValues?: MeetingActionsInput;
 }) {
-  const [inputMode, setInputMode] = useState<WorkflowInputMode>("simple");
+  const [inputMode, setInputMode] = useState<WorkflowInputMode>(initialValues?.inputMode ?? "simple");
   const {
     register,
     control,
@@ -48,7 +50,7 @@ export function MeetingActionsForm({
     formState: { errors, isSubmitting },
   } = useForm<MeetingActionsInput>({
     resolver: zodResolver(meetingActionsInputSchema),
-    defaultValues: emptyInput,
+    defaultValues: initialValues ?? emptyInput,
   });
   const { fields, append, remove } = useFieldArray({ control, name: "participants" });
 

@@ -16,7 +16,8 @@ Browser
 → versioned Django Ninja API
 → application services and domain models
 → PostgreSQL
-→ provider-neutral AI adapter (Gemini default, OpenAI compatible)
+→ provider-neutral AI adapter or durable local-connector job
+→ Gemini / OpenAI / Qwen / Bedrock / governed compatible endpoint / private model host
 ```
 
 Trust boundaries:
@@ -129,6 +130,48 @@ Gate: staging passes the complete sign-in → workflow → history → deletion 
 Gate: all three workflows remain useful in Simple Mode, Advanced ownership is contract-validated,
 fictional fixtures are unmistakable, and no sample action produces a real authorization side effect.
 
+## Initiative 9 — Observable workflow execution
+
+- Persist a coarse execution phase (`queued`, `preparing`, `generating`, `validating`, `saving`,
+  `completed`, or `failed`) with every run.
+- Show a real elapsed timer and the current truthful phase; never simulate percentage completion.
+- Poll only durable asynchronous runs and stop on completion, failure, or a bounded timeout.
+- Preserve safe error codes and request IDs while keeping credentials, prompts, and raw provider
+  responses out of browser-visible diagnostics.
+
+Gate: cloud and connector runs expose truthful state transitions, stalled work has recovery copy,
+and reduced-motion users receive the same semantic status without required animation.
+
+## Initiative 10 — Governed model connectivity
+
+- Support Bedrock through its region-scoped Runtime Converse endpoint and personal bearer API keys.
+- Allow user-configured OpenAI-compatible services only through public HTTPS endpoints with explicit
+  three-tier model mappings; reject credentials in URLs, redirects, custom ports, and DNS answers
+  that resolve to private or special-purpose networks.
+- Reach local/private OpenAI-compatible servers through an outbound polling connector. Never ask a
+  user to expose Ollama, LM Studio, or vLLM to the public internet.
+- Store provider keys with the existing encrypted credential vault. Store server-side connector
+  tokens only as one-way digests and make pairing codes short-lived and one-time.
+- Treat application validation as one layer: production custom-endpoint deployments should also use
+  egress controls and DNS monitoring to reduce rebinding and compromised-DNS risk.
+
+Gate: credential isolation, endpoint validation, one-time pairing, connector authorization,
+structured-output validation, and safe provider error mapping have automated coverage.
+
+## Initiative 11 — Human-reviewed workflow handoffs
+
+- Let a completed Bug Triage result create separate editable drafts for Meeting Actions, Work
+  Status, or a persistent Work Item.
+- Convert configuration/process findings into verification work, product defects into engineering
+  work, and uncertain findings into evidence investigations.
+- Require confirmation before a draft becomes work or starts the next workflow; AI output never
+  assigns or publishes work directly.
+- Keep personal Work Items private and auditable to their source run and handoff. Sample assignees
+  remain presentation-only until organization membership and authorization exist.
+
+Gate: handoffs are idempotent per open target, ownership-scoped, source-linked, editable before
+conversion, and exercised by API and component tests.
+
 ## Next initiatives after Backend Part 2
 
 1. Complete the signed-in browser path from WorkOS through the Next.js BFF to Django and Gemini,
@@ -138,4 +181,5 @@ fictional fixtures are unmistakable, and no sample action produces a real author
 3. Add privacy self-service for full account export and account erasure before paid launch.
 4. Add structured request/provider telemetry and alerting without logging workflow input or secrets.
 5. Establish per-tier budget envelopes and user-visible monthly usage before billing is introduced.
-6. Add a durable queue only if measured synchronous timeout or concurrency data requires it.
+6. Graduate connector jobs to a dedicated worker/queue only when measured concurrency, lease
+   contention, or retention needs exceed the PostgreSQL-backed personal preview.

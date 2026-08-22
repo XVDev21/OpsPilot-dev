@@ -8,6 +8,7 @@ from common.errors import register_error_handlers
 from integrations.api import router as integrations_router
 from runs.api import router as runs_router
 from workflows.api import router as workflows_router
+from workitems.api import router as workitems_router
 
 api = NinjaAPI(
     title="OpsPilot API",
@@ -24,3 +25,4 @@ api.add_router("", accounts_router)
 api.add_router("", integrations_router)
 api.add_router("", workflows_router)
 api.add_router("", runs_router)
+api.add_router("", workitems_router)
