@@ -52,9 +52,10 @@ now use the same relationship instead of a free-form assignee string. The migrat
 legacy key: known sample keys link to their seeded members, while unknown keys become clearly named
 imported collaborator records in the owner's workspace.
 
-Workflow runs, handoffs, and Work Items have nullable case relationships. A run launched from a case
-retains that case ID; subsequent reviewed handoffs inherit it; a converted Work Item retains the
-source run, handoff, case, assignee, and due date.
+Workflow runs, handoffs, and Work Items have nullable case relationships. Expired workflow runs stay
+hidden from case detail and are not copied into durable cases during historic backfill. A run
+launched from a case retains that case ID; subsequent reviewed handoffs inherit it; a converted Work
+Item retains the source run, handoff, case, assignee, and due date.
 
 ## API surface
 
@@ -97,7 +98,8 @@ new migrations and:
 
 1. creates personal workspaces and seeded member records for existing accounts;
 2. converts legacy Work Item assignee keys to foreign keys;
-3. backfills a case for historic Bug Triage runs and links their handoffs and Work Items.
+3. backfills a system-attributed case for unexpired historic Bug Triage runs and owner-valid linked
+   handoffs and Work Items while preserving the source chronology.
 
 No new environment variable, Redis service, worker, or cache is required. The migrations are
 additive until the legacy assignee string is converted inside one migration transaction. Take the

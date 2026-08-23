@@ -111,8 +111,10 @@ class OperationsCase(models.Model):
     due_date = models.DateField(blank=True, null=True)
     created_by = models.ForeignKey(
         AppUser,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         related_name="created_operations_cases",
+        blank=True,
+        null=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

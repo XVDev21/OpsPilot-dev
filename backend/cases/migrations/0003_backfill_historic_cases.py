@@ -1,4 +1,6 @@
 from django.db import migrations
+from django.db.models import Q
+from django.utils import timezone
 
 
 def disposition_for(result):
@@ -27,6 +29,7 @@ def backfill_historic_cases(apps, schema_editor):
     WorkflowHandoff = apps.get_model("workitems", "WorkflowHandoff")
     WorkItem = apps.get_model("workitems", "WorkItem")
 
+    migration_time = timezone.now()
     for workspace in Workspace.objects.iterator():
         next_number = (
             OperationsCase.objects.filter(workspace_id=workspace.id)
@@ -39,7 +42,8 @@ def backfill_historic_cases(apps, schema_editor):
             user_id=workspace.owner_id,
             workflow_id="bug-triage",
             case_id__isnull=True,
-        ).order_by("created_at", "id")
+        ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=migration_time))
+        runs = runs.order_by("created_at", "id")
         for run in runs.iterator():
             next_number += 1
             source_input = run.input_json if isinstance(run.input_json, dict) else {}
@@ -66,28 +70,50 @@ def backfill_historic_cases(apps, schema_editor):
                 confidence=confidence_for(result),
                 created_by_id=workspace.owner_id,
             )
-            CaseEvent.objects.create(
+            source_updated_at = run.completed_at or run.created_at
+            OperationsCase.objects.filter(id=case.id).update(
+                created_at=run.created_at,
+                updated_at=source_updated_at,
+            )
+            event = CaseEvent.objects.create(
                 case_id=case.id,
-                actor_id=workspace.owner_id,
+                actor_id=None,
                 event_type="created",
                 payload={"source": "historic-backfill", "runId": str(run.id)},
             )
+            CaseEvent.objects.filter(id=event.id).update(created_at=run.created_at)
             run.case_id = case.id
             run.save(update_fields=["case"])
             handoff_ids = list(
-                WorkflowHandoff.objects.filter(source_run_id=run.id).values_list("id", flat=True)
+                WorkflowHandoff.objects.filter(
+                    user_id=workspace.owner_id,
+                    source_run_id=run.id,
+                ).values_list("id", flat=True)
             )
-            WorkflowHandoff.objects.filter(id__in=handoff_ids).update(case_id=case.id)
-            WorkItem.objects.filter(source_run_id=run.id).update(case_id=case.id)
-            WorkItem.objects.filter(source_handoff_id__in=handoff_ids).update(case_id=case.id)
+            WorkflowHandoff.objects.filter(
+                user_id=workspace.owner_id,
+                id__in=handoff_ids,
+            ).update(case_id=case.id)
+            WorkItem.objects.filter(
+                user_id=workspace.owner_id,
+                source_run_id=run.id,
+            ).update(case_id=case.id)
+            WorkItem.objects.filter(
+                user_id=workspace.owner_id,
+                source_handoff_id__in=handoff_ids,
+            ).update(case_id=case.id)
             target_run_ids = WorkflowHandoff.objects.filter(
+                user_id=workspace.owner_id,
                 id__in=handoff_ids,
                 target_run_id__isnull=False,
             ).values_list("target_run_id", flat=True)
-            WorkflowRun.objects.filter(id__in=target_run_ids, case_id__isnull=True).update(
-                case_id=case.id
-            )
-            owner_key = (result.get("routing") or {}).get("ownerId")
+            WorkflowRun.objects.filter(
+                user_id=workspace.owner_id,
+                id__in=target_run_ids,
+                case_id__isnull=True,
+            ).update(case_id=case.id)
+            routing = result.get("routing")
+            owner_key = routing.get("ownerId") if isinstance(routing, dict) else None
             if isinstance(owner_key, str) and owner_key:
                 member = WorkspaceMember.objects.filter(
                     workspace_id=workspace.id,

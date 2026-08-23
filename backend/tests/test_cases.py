@@ -193,3 +193,24 @@ def test_case_pagination_and_workspace_authorization(authenticated_client: Clien
     )
     assert rejected.status_code == 422
     assert rejected.json()["error"]["code"] == "INVALID_ASSIGNEE"
+
+
+def test_personal_workspace_cases_do_not_block_account_deletion() -> None:
+    user = AppUser.objects.create(
+        workos_user_id="deletable-case-user",
+        email="delete-case@example.com",
+    )
+    case = create_case(
+        user=user,
+        title="Delete this personal workspace",
+        description="Account erasure must remove the personal workspace and its durable case data.",
+        summary="Deletion lifecycle coverage.",
+        disposition=OperationsCase.Disposition.UNCLASSIFIED,
+        due_date=None,
+        assignee_id=None,
+    )
+
+    user.delete()
+
+    assert not AppUser.objects.filter(workos_user_id="deletable-case-user").exists()
+    assert not OperationsCase.objects.filter(id=case.id).exists()

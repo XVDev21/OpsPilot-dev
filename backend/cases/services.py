@@ -165,7 +165,7 @@ def update_case(
     due_date_supplied: bool = False,
     resolution_summary: str | None = None,
 ) -> OperationsCase:
-    case = case_for_user(user=user, case_id=case_id)
+    case = case_for_user(user=user, case_id=case_id, for_update=True)
     update_fields: list[str] = []
     now = timezone.now()
     if status is not None and status != case.status:
@@ -233,7 +233,7 @@ def assign_case(
     case_id: UUID,
     assignee_id: UUID | None,
 ) -> OperationsCase:
-    case = case_for_user(user=user, case_id=case_id)
+    case = case_for_user(user=user, case_id=case_id, for_update=True)
     assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
     assignment, _ = CaseAssignment.objects.select_for_update().get_or_create(case=case)
     previous = assignment.assignee

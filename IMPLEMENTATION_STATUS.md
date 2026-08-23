@@ -44,7 +44,7 @@
 backend Ruff            PASS - format and lint
 migration consistency   PASS - model state current; legacy assignment preservation tested
 Django checks           PASS - local checks
-backend tests           PASS - 108 tests, 91% branch coverage
+backend tests           PASS - 110 tests, 91.25% branch coverage
 frontend lint           PASS - zero warnings
 frontend typecheck      PASS
 frontend tests          PASS - 17 files, 44 tests

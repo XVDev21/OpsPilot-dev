@@ -1,10 +1,12 @@
 from uuid import UUID
 
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
+from django.utils import timezone
 
 from accounts.models import AppUser
 from cases.models import OperationsCase, WorkspaceMember
 from common.errors import OpsPilotError
+from runs.models import WorkflowRun
 
 
 def cases_for_user(user: AppUser) -> QuerySet[OperationsCase]:
@@ -23,16 +25,30 @@ def cases_for_user(user: AppUser) -> QuerySet[OperationsCase]:
     )
 
 
-def case_for_user(*, user: AppUser, case_id: UUID, detail: bool = False) -> OperationsCase:
+def case_for_user(
+    *,
+    user: AppUser,
+    case_id: UUID,
+    detail: bool = False,
+    for_update: bool = False,
+) -> OperationsCase:
     queryset = OperationsCase.objects.filter(workspace__owner=user, id=case_id).select_related(
         "workspace",
         "created_by",
         "assignment__assignee",
     )
+    if for_update:
+        queryset = queryset.select_for_update()
     if detail:
         queryset = queryset.prefetch_related(
             "events__actor",
-            "workflow_runs",
+            Prefetch(
+                "workflow_runs",
+                queryset=WorkflowRun.objects.filter(
+                    Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
+                ).order_by("-created_at", "-id"),
+                to_attr="visible_workflow_runs",
+            ),
             "work_items__assignee",
         )
     case = queryset.first()

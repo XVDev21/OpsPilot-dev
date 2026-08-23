@@ -83,7 +83,7 @@ def case_detail_dict(case: OperationsCase) -> dict:
                     "createdAt": run.created_at,
                     "completedAt": run.completed_at,
                 }
-                for run in case.workflow_runs.all()
+                for run in case.visible_workflow_runs
             ],
             "workItems": [work_item_dict(item) for item in case.work_items.all()],
             "events": [

@@ -172,7 +172,12 @@ def update_work_item(
     due_date=None,
     due_date_supplied: bool = False,
 ) -> WorkItem:
-    item = WorkItem.objects.select_related("case", "assignee").filter(user=user, id=item_id).first()
+    item = (
+        WorkItem.objects.select_for_update()
+        .select_related("case", "assignee")
+        .filter(user=user, id=item_id)
+        .first()
+    )
     if item is None:
         raise OpsPilotError(code="NOT_FOUND", message="That work item was not found.", status=404)
     changes: dict[str, dict] = {}
