@@ -74,8 +74,9 @@ Bug Triage result
 Each action creates an ownership-scoped editable draft. The user reviews the title, evidence,
 ownership, due date, participants, or audience before conversion. Work Items persist on a personal
 four-state board (`todo`, `in-progress`, `blocked`, `done`) and retain links to the originating run
-and handoff. Fictional sample collaborators remain non-routable presentation data; this release does
-not invite users, send notifications, or grant access.
+and handoff. Fictional sample collaborators are now persisted, workspace-scoped assignment targets;
+they still cannot sign in, send notifications, or receive access grants. See
+`docs/13_OPERATIONS_CASES_AND_ASSIGNMENTS.md` for the durable case and assignment model.
 
 ## Deployment order
 

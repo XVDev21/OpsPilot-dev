@@ -2,6 +2,8 @@ import pytest
 from django.test import Client
 
 from accounts.models import AppUser
+from cases.models import CaseEvent, WorkspaceMember
+from cases.services import create_case
 from runs.models import WorkflowRun
 from workitems.models import WorkflowHandoff, WorkItem
 
@@ -21,7 +23,7 @@ def _completed_bug_run(user: AppUser) -> WorkflowRun:
             "evidenceGaps": ["Server logs were not supplied."],
             "recommendedChecks": ["Compare export job logs."],
             "issueType": "product-defect",
-            "routing": {"ownerId": "sample-dev"},
+            "routing": {"ownerId": "sample-mina-park"},
         },
     )
 
@@ -29,7 +31,19 @@ def _completed_bug_run(user: AppUser) -> WorkflowRun:
 def test_bug_triage_creates_distinct_reviewable_handoffs(authenticated_client: Client) -> None:
     authenticated_client.get("/api/v1/me")
     user = AppUser.objects.get(workos_user_id="user_test_primary")
+    assignee = WorkspaceMember.objects.get(workspace__owner=user, key="sample-mina-park")
+    case = create_case(
+        user=user,
+        title="CSV export stalls",
+        description="Large CSV exports remain in processing and require engineering review.",
+        summary="Reproduce the scale-dependent export stall.",
+        disposition="product-defect",
+        due_date=None,
+        assignee_id=assignee.id,
+    )
     run = _completed_bug_run(user)
+    run.case = case
+    run.save(update_fields=["case"])
 
     work = authenticated_client.post(
         f"/api/v1/runs/{run.id}/handoffs",
@@ -59,7 +73,19 @@ def test_reviewed_work_item_is_persisted_and_handoff_converted(
 ) -> None:
     authenticated_client.get("/api/v1/me")
     user = AppUser.objects.get(workos_user_id="user_test_primary")
+    assignee = WorkspaceMember.objects.get(workspace__owner=user, key="sample-mina-park")
+    case = create_case(
+        user=user,
+        title="CSV export stalls",
+        description="Large CSV exports remain in processing and require engineering review.",
+        summary="Reproduce the scale-dependent export stall.",
+        disposition="product-defect",
+        due_date=None,
+        assignee_id=assignee.id,
+    )
     run = _completed_bug_run(user)
+    run.case = case
+    run.save(update_fields=["case"])
     handoff = authenticated_client.post(
         f"/api/v1/runs/{run.id}/handoffs",
         data={"target": "work-item"},
@@ -69,24 +95,49 @@ def test_reviewed_work_item_is_persisted_and_handoff_converted(
         "/api/v1/work-items",
         data={
             "handoffId": handoff["id"],
+            "caseId": str(case.id),
             "title": "Fix large CSV export stalls",
             "description": "Reproduce the stall and compare job logs before implementing the fix.",
             "kind": "engineering",
-            "assigneeId": "sample-dev",
+            "assigneeId": str(assignee.id),
             "dueDate": "2026-08-30",
         },
         content_type="application/json",
     )
     assert created.status_code == 201
-    assert created.json()["source_run_id"] == str(run.id)
+    assert created.json()["sourceRunId"] == str(run.id)
+    assert created.json()["caseId"] == str(case.id)
+    assert created.json()["assigneeKey"] == "sample-mina-park"
     patched = authenticated_client.patch(
         f"/api/v1/work-items/{created.json()['id']}",
-        data={"status": "in-progress"},
+        data={"status": "in-progress", "dueDate": "2026-09-01"},
         content_type="application/json",
     )
     assert patched.status_code == 200
     assert patched.json()["status"] == "in-progress"
+    assert patched.json()["dueDate"] == "2026-09-01"
+    verifier = WorkspaceMember.objects.get(workspace__owner=user, key="sample-rafael-silva")
+    reassigned = authenticated_client.patch(
+        f"/api/v1/work-items/{created.json()['id']}",
+        data={"assigneeId": str(verifier.id)},
+        content_type="application/json",
+    )
+    assert reassigned.json()["assigneeKey"] == "sample-rafael-silva"
+    completed = authenticated_client.patch(
+        f"/api/v1/work-items/{created.json()['id']}",
+        data={"status": "done", "assigneeId": None, "dueDate": None},
+        content_type="application/json",
+    )
+    assert completed.json()["assigneeId"] is None
+    assert completed.json()["dueDate"] is None
+    filtered = authenticated_client.get(
+        "/api/v1/work-items",
+        {"status": "done", "caseId": str(case.id)},
+    )
+    assert [item["id"] for item in filtered.json()["items"]] == [created.json()["id"]]
     assert WorkflowHandoff.objects.get(id=handoff["id"]).status == "converted"
+    assert CaseEvent.objects.filter(case=case, event_type="work-item-created").exists()
+    assert CaseEvent.objects.filter(case=case, event_type="work-item-updated").exists()
 
 
 def test_work_items_and_handoffs_are_user_scoped(authenticated_client: Client) -> None:
@@ -111,6 +162,17 @@ def test_work_items_and_handoffs_are_user_scoped(authenticated_client: Client) -
     listed = authenticated_client.get("/api/v1/work-items")
     assert listed.status_code == 200
     assert listed.json()["items"] == []
+    standalone = authenticated_client.post(
+        "/api/v1/work-items",
+        data={
+            "title": "Standalone follow-up",
+            "description": "Keep supporting reviewed work that does not need an operations case.",
+            "kind": "follow-up",
+        },
+        content_type="application/json",
+    )
+    assert standalone.status_code == 201
+    assert standalone.json()["caseId"] is None
     assert (
         authenticated_client.patch(
             f"/api/v1/work-items/{other_item.id}",

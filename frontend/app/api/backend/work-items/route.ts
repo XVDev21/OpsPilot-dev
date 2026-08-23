@@ -3,10 +3,17 @@ import { ApiError, apiErrorResponse } from "@/lib/api/errors";
 import { createWorkItemInputSchema } from "@/lib/api/schemas";
 import { requireAccessToken } from "@/lib/api/route-auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const accessToken = await requireAccessToken();
-    return Response.json(await djangoApi.listWorkItems(accessToken));
+    const source = new URL(request.url).searchParams;
+    const allowed = new URLSearchParams();
+    for (const key of ["status", "assigneeId", "caseId"]) {
+      const value = source.get(key);
+      if (value) allowed.set(key, value);
+    }
+    const search = allowed.size ? `?${allowed}` : "";
+    return Response.json(await djangoApi.listWorkItems(accessToken, search));
   } catch (error) {
     return apiErrorResponse(error);
   }

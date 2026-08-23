@@ -5,6 +5,7 @@ import type { WorkflowRun } from "@/lib/api/types";
 function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
   return {
     id: "run_123",
+    case_id: null,
     workflow_id: "meeting-actions",
     status: "completed",
     execution_phase: "completed",

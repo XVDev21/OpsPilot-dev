@@ -17,6 +17,7 @@ import {
   UsersRound,
   Workflow,
   BriefcaseBusiness,
+  FolderKanban,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/app/actions";
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutGrid, exact: true },
   { href: "/app/workflows", label: "Workflows", icon: Workflow, exact: false },
+  { href: "/app/cases", label: "Cases", icon: FolderKanban, exact: false },
   { href: "/app/work-items", label: "Work items", icon: BriefcaseBusiness, exact: false },
   { href: "/app/team", label: "Team", icon: UsersRound, exact: false },
   { href: "/app/history", label: "History", icon: History, exact: false },

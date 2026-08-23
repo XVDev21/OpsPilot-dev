@@ -12,6 +12,8 @@ from accounts.models import AppUser
 from ai.prompts import compile_prompt
 from ai.providers.registry import get_provider, max_output_tokens_for, model_for
 from ai.types import AIProvider, IntelligenceLevel, ProviderFailure, ProviderName
+from cases.models import OperationsCase
+from cases.services import record_workflow_link
 from common.errors import OpsPilotError
 from integrations.connectors import connector_for_user
 from integrations.services import mark_credential_used
@@ -31,6 +33,7 @@ def reserve_run(
     provider_name: ProviderName,
     intelligence: IntelligenceLevel,
     model: str,
+    case: OperationsCase | None = None,
 ) -> WorkflowRun:
     locked_user = AppUser.objects.select_for_update().get(pk=user.pk)
     now = timezone.now()
@@ -52,6 +55,7 @@ def reserve_run(
         )
     return WorkflowRun.objects.create(
         user=locked_user,
+        case=case,
         workflow_id=workflow.id,
         status=WorkflowRun.Status.PENDING,
         execution_phase=(
@@ -93,6 +97,7 @@ def execute_workflow_run(
     provider_name: ProviderName,
     intelligence: IntelligenceLevel,
     provider: AIProvider | None = None,
+    case: OperationsCase | None = None,
 ) -> WorkflowRun:
     try:
         model = model_for(provider_name, intelligence, user=user)
@@ -111,7 +116,10 @@ def execute_workflow_run(
         provider_name=provider_name,
         intelligence=intelligence,
         model=model,
+        case=case,
     )
+    if case is not None:
+        record_workflow_link(case=case, run=run, actor=user)
     started_at = monotonic()
 
     if provider_name == "local":

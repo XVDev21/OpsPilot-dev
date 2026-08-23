@@ -9,6 +9,7 @@ from runs.models import WorkflowRun
 
 class WorkflowRunSchema(ModelSchema):
     id: UUID
+    case_id: UUID | None
     workflow_id: Literal["bug-triage", "meeting-actions", "status-update"]
     input_json: dict[str, Any]
     result_json: dict[str, Any] | None
@@ -54,3 +55,4 @@ class CreateWorkflowRunRequest(Schema):
     input: dict[str, Any]
     options: RunOptions | None = None
     handoffId: UUID | None = None
+    caseId: UUID | None = None

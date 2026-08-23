@@ -1,14 +1,18 @@
-import { ArrowRight, BadgeCheck, CircleDot, ShieldCheck, UsersRound } from "lucide-react";
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, BadgeCheck, CircleDot, LoaderCircle, ShieldCheck, UsersRound } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { sampleTeamMembers } from "@/lib/collaboration/sample-team";
+import { browserApi } from "@/lib/api/browser-client";
 import { cn } from "@/lib/utils";
 
 const toneClasses = {
   indigo: "bg-primary/12 text-primary",
   cyan: "bg-accent/12 text-accent-strong",
   amber: "bg-warning/12 text-warning",
+  neutral: "bg-surface-soft text-foreground-muted",
 } as const;
 
 const laneSteps = [
@@ -18,6 +22,8 @@ const laneSteps = [
 ] as const;
 
 export function TeamDirectory({ workflowHref = "/app/workflows" }: { workflowHref?: Route }) {
+  const members = useQuery({ queryKey: ["workspace-members"], queryFn: browserApi.listWorkspaceMembers });
+  const sampleMembers = members.data?.items.filter((member) => member.isSample) ?? [];
   return (
     <div className="grid gap-6">
       <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface-raised shadow-[var(--shadow-sm)]">
@@ -25,13 +31,13 @@ export function TeamDirectory({ workflowHref = "/app/workflows" }: { workflowHre
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="primary">Sample workspace</Badge>
-              <Badge tone="neutral">5 fictional profiles</Badge>
+              <Badge tone="neutral">5 persisted sample profiles</Badge>
             </div>
             <h1 className="mt-4 max-w-3xl text-balance text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">
               A delivery pod built around clean handoffs
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-foreground-muted sm:text-base sm:leading-7">
-              These profiles are explicit sample data—not real identities or login accounts. Use them to demonstrate routing and ownership until WorkOS organizations, invitations, and role assignments are introduced.
+              These profiles are explicit sample data—not real identities or login accounts. Their assignments now persist in this personal workspace, while authenticated activity remains attributable only to you.
             </p>
           </div>
           <div className="rounded-2xl border border-primary/15 bg-surface-accent p-4">
@@ -41,7 +47,7 @@ export function TeamDirectory({ workflowHref = "/app/workflows" }: { workflowHre
               </span>
               <div>
                 <p className="text-sm font-bold text-foreground">Prototype boundary</p>
-                <p className="mt-1 text-xs leading-5 text-foreground-muted">Selections add workflow context only; they do not grant access or send notifications.</p>
+                <p className="mt-1 text-xs leading-5 text-foreground-muted">Assignments are functional records; they do not grant sign-in access or send notifications.</p>
               </div>
             </div>
           </div>
@@ -70,7 +76,9 @@ export function TeamDirectory({ workflowHref = "/app/workflows" }: { workflowHre
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {sampleTeamMembers.map((member) => (
+          {members.isPending ? <p role="status" className="flex items-center gap-2 text-sm text-foreground-muted"><LoaderCircle aria-hidden="true" className="size-4 animate-spin text-primary motion-reduce:animate-none" /> Loading workspace members…</p> : null}
+          {members.isError ? <p role="alert" className="text-sm text-danger">Workspace members could not be loaded.</p> : null}
+          {sampleMembers.map((member) => (
             <article key={member.id} className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-5 shadow-[var(--shadow-sm)]">
               <div className="flex items-start justify-between gap-3">
                 <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl text-sm font-extrabold", toneClasses[member.tone])} aria-hidden="true">
@@ -104,7 +112,7 @@ export function TeamDirectory({ workflowHref = "/app/workflows" }: { workflowHre
           <div>
             <h2 id="future-team-heading" className="text-base font-bold text-foreground">Ready for real membership later</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground-muted">
-              The next collaboration milestone can replace these fixtures with organization-scoped members, invitations, roles, availability, and auditable assignments without changing the three workflow entry points.
+              A future WorkOS invitation can link or replace a sample profile without rewriting its case history. Organization roles, notifications, and workspace invitations remain a later collaboration milestone.
             </p>
           </div>
         </div>

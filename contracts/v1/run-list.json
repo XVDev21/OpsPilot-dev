@@ -2,6 +2,7 @@
   "items": [
     {
       "id": "21d9f642-97fc-42cf-9028-d51a5388a99b",
+      "case_id": null,
       "workflow_id": "bug-triage",
       "status": "completed",
       "execution_phase": "completed",

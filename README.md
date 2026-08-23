@@ -70,7 +70,9 @@ state. The production-readiness initiatives and release gates live in
 `docs/09_DELIVERY_INITIATIVES_AND_RELEASE_GATES.md`. Live provider setup, credential rotation, and
 deployment requirements are documented in `docs/11_LIVE_MODE_BYOK_PROVIDER_INTEGRATIONS.md`.
 Observable runs, local setup, and reviewed delivery handoffs are documented in
-`docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`.
+`docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`. Operations Cases, durable assignment
+relationships, migration behavior, and deployment order are documented in
+`docs/13_OPERATIONS_CASES_AND_ASSIGNMENTS.md`.
 
 ## Development environment
 

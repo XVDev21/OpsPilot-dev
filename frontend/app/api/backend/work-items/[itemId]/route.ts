@@ -15,14 +15,14 @@ export async function PATCH(request: Request, { params }: WorkItemRouteProps) {
       throw new ApiError(
         {
           code: "VALIDATION_ERROR",
-          message: "Choose a supported work-item state.",
+          message: "Review the work-item assignment, state, and due date.",
           retryable: false,
         },
         422,
       );
     }
     return Response.json(
-      await djangoApi.updateWorkItemStatus(accessToken, itemId, input.data.status),
+      await djangoApi.updateWorkItem(accessToken, itemId, input.data),
     );
   } catch (error) {
     return apiErrorResponse(error);

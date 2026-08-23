@@ -17,6 +17,13 @@ class WorkflowHandoff(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name="workflow_handoffs")
+    case = models.ForeignKey(
+        "cases.OperationsCase",
+        on_delete=models.SET_NULL,
+        related_name="handoffs",
+        blank=True,
+        null=True,
+    )
     source_run = models.ForeignKey(
         "runs.WorkflowRun",
         on_delete=models.CASCADE,
@@ -62,6 +69,13 @@ class WorkItem(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name="work_items")
+    case = models.ForeignKey(
+        "cases.OperationsCase",
+        on_delete=models.SET_NULL,
+        related_name="work_items",
+        blank=True,
+        null=True,
+    )
     source_run = models.ForeignKey(
         "runs.WorkflowRun",
         on_delete=models.SET_NULL,
@@ -80,7 +94,13 @@ class WorkItem(models.Model):
     description = models.TextField(max_length=6000)
     kind = models.CharField(max_length=24, choices=Kind.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.TODO)
-    assignee_id = models.CharField(max_length=64, blank=True)
+    assignee = models.ForeignKey(
+        "cases.WorkspaceMember",
+        on_delete=models.SET_NULL,
+        related_name="work_items",
+        blank=True,
+        null=True,
+    )
     due_date = models.DateField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -88,4 +108,10 @@ class WorkItem(models.Model):
     class Meta:
         db_table = "work_items"
         ordering = ["-updated_at", "-created_at"]
-        indexes = [models.Index(fields=["user", "status", "-updated_at"])]
+        indexes = [
+            models.Index(fields=["user", "status", "-updated_at"]),
+            models.Index(
+                fields=["case", "status", "-updated_at"],
+                name="work_items_case_status_idx",
+            ),
+        ]
