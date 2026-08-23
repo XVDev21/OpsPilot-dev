@@ -71,6 +71,29 @@ describe("browser API client", () => {
     );
   });
 
+  it("runs model selection through the case assessment endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      headers: new Headers(),
+      json: async () => ({ ...workflowRunFixture, case_id: "7fc3b3bd-9361-43f0-87d2-8b7d96e5a0cc" }),
+    } satisfies Partial<Response>);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await browserApi.createCaseAssessment(
+      "7fc3b3bd-9361-43f0-87d2-8b7d96e5a0cc",
+      { provider: "gemini", intelligence: "balanced" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backend/cases/7fc3b3bd-9361-43f0-87d2-8b7d96e5a0cc/assessments",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ provider: "gemini", intelligence: "balanced" }),
+      }),
+    );
+  });
+
   it("sends a personal provider key only to the same-origin credential endpoint", async () => {
     const savedCredential = providerCredentialsFixture.items[1];
     const fetchMock = vi.fn().mockResolvedValue({

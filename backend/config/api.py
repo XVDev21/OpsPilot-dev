@@ -14,7 +14,7 @@ from workitems.api import router as workitems_router
 api = NinjaAPI(
     title="OpsPilot API",
     version="1.0.0",
-    description="Authenticated workflow execution and run history for OpsPilot.",
+    description="Authenticated Operations Cases, evidence, assessments, and delivery for OpsPilot.",
     auth=workos_bearer,
     docs_url="/docs" if settings.DEBUG else None,
     openapi_url="/openapi.json",

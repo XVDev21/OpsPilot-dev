@@ -15,6 +15,12 @@ class ProviderResult:
     output_tokens: int | None = None
 
 
+@dataclass(frozen=True)
+class AIImage:
+    data: bytes
+    mime_type: str
+
+
 class ProviderFailure(Exception):
     def __init__(
         self,
@@ -40,4 +46,5 @@ class AIProvider(Protocol):
         user_content: str,
         output_schema: type[BaseModel],
         max_output_tokens: int,
+        images: tuple[AIImage, ...] = (),
     ) -> ProviderResult: ...

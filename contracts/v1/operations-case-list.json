@@ -5,6 +5,8 @@
       "key": "OPS-0001",
       "title": "Holiday field is missing",
       "summary": "Verify whether the payroll Holiday setting is disabled.",
+      "intent": "issue",
+      "publicationState": "published",
       "status": "triaging",
       "disposition": "configuration-change",
       "confidence": 0.82,

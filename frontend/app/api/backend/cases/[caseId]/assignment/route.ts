@@ -7,15 +7,25 @@ interface CaseAssignmentRouteProps {
   params: Promise<{ caseId: string }>;
 }
 
-export async function PUT(request: Request, { params }: CaseAssignmentRouteProps) {
+export async function PUT(
+  request: Request,
+  { params }: CaseAssignmentRouteProps,
+) {
   try {
-    const [{ caseId }, accessToken] = await Promise.all([params, requireAccessToken()]);
+    const [{ caseId }, accessToken] = await Promise.all([
+      params,
+      requireAccessToken(),
+    ]);
     const input = updateCaseAssignmentInputSchema.safeParse(
       await request.json().catch(() => null),
     );
     if (!input.success) {
       throw new ApiError(
-        { code: "VALIDATION_ERROR", message: "Choose a workspace member.", retryable: false },
+        {
+          code: "VALIDATION_ERROR",
+          message: "Choose a workspace member.",
+          retryable: false,
+        },
         422,
       );
     }

@@ -36,7 +36,8 @@ describe("navigation and themes", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getAllByRole("link", { name: /Workflows/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Cases/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: /^Workflows$/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /History/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
   });

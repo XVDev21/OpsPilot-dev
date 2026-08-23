@@ -74,6 +74,9 @@ def test_legacy_work_item_assignee_is_preserved_as_workspace_member() -> None:
         case = OperationsCase.objects.get(workflow_runs__id=active_run.id)
         event = CaseEvent.objects.get(case_id=case.id, event_type="created")
         assert case.title == "Preserve this active run"
+        assert case.intent == "issue"
+        assert case.publication_state == "published"
+        assert case.published_at == case.created_at
         assert case.created_at == active_run.created_at
         assert event.actor_id is None
         assert event.created_at == active_run.created_at

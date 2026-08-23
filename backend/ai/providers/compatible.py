@@ -3,7 +3,7 @@ import openai
 from openai import DefaultHttpxClient, OpenAI
 from pydantic import BaseModel, ValidationError
 
-from ai.types import ProviderFailure, ProviderResult
+from ai.types import AIImage, ProviderFailure, ProviderResult
 
 
 class OpenAICompatibleProvider:
@@ -27,7 +27,15 @@ class OpenAICompatibleProvider:
         user_content: str,
         output_schema: type[BaseModel],
         max_output_tokens: int,
+        images: tuple[AIImage, ...] = (),
     ) -> ProviderResult:
+        if images:
+            raise ProviderFailure(
+                code="MODEL_CAPABILITY_MISMATCH",
+                message="This provider route is not verified for image evidence yet.",
+                status=422,
+                retryable=False,
+            )
         try:
             response = self.client.chat.completions.create(
                 model=model,

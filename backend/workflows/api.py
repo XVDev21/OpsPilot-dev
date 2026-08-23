@@ -1,7 +1,12 @@
 from django.conf import settings
 from ninja import Router
 
-from ai.providers.registry import PROVIDER_CATALOG, credential_source_for, provider_is_enabled
+from ai.providers.registry import (
+    PROVIDER_CATALOG,
+    credential_source_for,
+    models_for_provider,
+    provider_is_enabled,
+)
 from workflows.registry import WORKFLOW_REGISTRY
 from workflows.schemas import ExecutionOptions, WorkflowMetadata
 
@@ -28,6 +33,8 @@ def execution_options(request):
                 "enabled": provider_is_enabled(provider.id, user=request.auth.user),
                 "credentialSource": credential_source_for(provider.id, user=request.auth.user),
                 "supportsPersonalKey": provider.supports_personal_key,
+                "supportsImages": provider.supports_images,
+                "models": models_for_provider(provider.id, user=request.auth.user),
             }
             for provider in PROVIDER_CATALOG
         ],

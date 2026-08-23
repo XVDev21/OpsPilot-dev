@@ -43,6 +43,8 @@ class WorkflowRun(models.Model):
         default=ExecutionPhase.PREPARING,
     )
     input_json = models.JSONField(default=dict)
+    is_case_assessment = models.BooleanField(default=False)
+    case_evidence_snapshot = models.JSONField(default=list, blank=True)
     result_json = models.JSONField(blank=True, null=True)
     error_code = models.CharField(max_length=64, blank=True, null=True)
     provider = models.CharField(max_length=64, blank=True, null=True)

@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 from accounts.models import AppUser
 from ai.prompts import compile_prompt
 from ai.providers.registry import get_provider, max_output_tokens_for, model_for
-from ai.types import AIProvider, IntelligenceLevel, ProviderFailure, ProviderName
+from ai.types import AIImage, AIProvider, IntelligenceLevel, ProviderFailure, ProviderName
 from cases.models import OperationsCase
 from cases.services import record_workflow_link
 from common.errors import OpsPilotError
@@ -34,6 +34,8 @@ def reserve_run(
     intelligence: IntelligenceLevel,
     model: str,
     case: OperationsCase | None = None,
+    is_case_assessment: bool = False,
+    case_evidence_snapshot: list[dict] | None = None,
 ) -> WorkflowRun:
     locked_user = AppUser.objects.select_for_update().get(pk=user.pk)
     now = timezone.now()
@@ -64,6 +66,8 @@ def reserve_run(
             else WorkflowRun.ExecutionPhase.PREPARING
         ),
         input_json=input_json,
+        is_case_assessment=is_case_assessment,
+        case_evidence_snapshot=case_evidence_snapshot or [],
         provider=provider_name,
         model=model,
         intelligence=intelligence,
@@ -98,6 +102,9 @@ def execute_workflow_run(
     intelligence: IntelligenceLevel,
     provider: AIProvider | None = None,
     case: OperationsCase | None = None,
+    images: tuple[AIImage, ...] = (),
+    is_case_assessment: bool = False,
+    case_evidence_snapshot: list[dict] | None = None,
 ) -> WorkflowRun:
     try:
         model = model_for(provider_name, intelligence, user=user)
@@ -117,6 +124,8 @@ def execute_workflow_run(
         intelligence=intelligence,
         model=model,
         case=case,
+        is_case_assessment=is_case_assessment,
+        case_evidence_snapshot=case_evidence_snapshot,
     )
     if case is not None:
         record_workflow_link(case=case, run=run, actor=user)
@@ -156,6 +165,7 @@ def execute_workflow_run(
             model=model,
             system_instruction=system_instruction,
             user_content=user_content,
+            images=images,
             output_schema=workflow.output_schema,
             max_output_tokens=max_output_tokens_for(intelligence),
         )
@@ -210,6 +220,10 @@ def execute_workflow_run(
             "completed_at",
         ]
     )
+    if run.is_case_assessment:
+        from cases.assessments import create_assessment_from_run
+
+        create_assessment_from_run(run=run, actor=user)
     return run
 
 

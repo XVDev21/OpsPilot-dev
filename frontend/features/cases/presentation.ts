@@ -1,4 +1,9 @@
-import type { CaseDisposition, CaseStatus } from "@/lib/api/types";
+import type {
+  CaseDisposition,
+  CaseIntent,
+  CasePublicationState,
+  CaseStatus,
+} from "@/lib/api/types";
 
 export const caseStatusLabels: Record<CaseStatus, string> = {
   new: "New",
@@ -23,6 +28,18 @@ export const caseDispositionLabels: Record<CaseDisposition, string> = {
 
 export const caseStatuses = Object.keys(caseStatusLabels) as CaseStatus[];
 export const caseDispositions = Object.keys(caseDispositionLabels) as CaseDisposition[];
+
+export const caseIntentLabels: Record<CaseIntent, string> = {
+  issue: "Issue investigation",
+  clarification: "Clarification or guidance",
+  enhancement: "Additional development",
+};
+
+export const casePublicationLabels: Record<CasePublicationState, string> = {
+  draft: "Draft",
+  published: "Published",
+  archived: "Archived",
+};
 
 export const allowedCaseTransitions: Record<CaseStatus, CaseStatus[]> = {
   new: ["triaging", "needs-information", "action-required", "resolved", "closed"],

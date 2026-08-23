@@ -2,7 +2,7 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Operations Cases + durable workspace assignments
+**Current milestone:** Case-first assessments + private evidence
 **Status:** Implementation complete; release gates passed; draft PR ready
 
 ## Milestones
@@ -18,8 +18,52 @@
 - [x] Personal Bedrock, governed compatible API, and outbound local-model connections
 - [x] Human-reviewed Bug Triage handoffs and personal Work Items
 - [x] Operations Cases, durable personal workspaces, and real member assignments
+- [x] Case-first intake, private multimodal evidence, and confidence-based assessments
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Case-first assessments and private evidence
+
+- [x] make authenticated Operations Cases the only new-work entry point while retaining the
+  workflow engine as an internal compatibility and execution boundary
+- [x] add issue, clarification, and enhancement intent plus independent draft, published, and
+  archived publication states
+- [x] support private text and JPEG/PNG/WebP evidence with authenticated streaming, metadata
+  stripping, digesting, and explicit deletion
+- [x] add append-only, versioned Case Assessments with provider/model/prompt provenance and an
+  immutable evidence snapshot reserved before execution
+- [x] derive OpsPilot decision confidence from model confidence, evidence coverage, gaps, and
+  contradictions without allowing AI to publish, assign, resolve, or close a case
+- [x] present proposed disposition, confidence factors, facts, missing or contradicting evidence,
+  settings guidance, verification, routing, and human-review requirements
+- [x] allow explicit human application of an assessment to the case working summary and disposition
+- [x] show configured provider/model choices per case and preserve every model switch as a separate
+  assessment rather than silently blending results
+- [x] preserve public deterministic Demo workflows and redirect authenticated workflow navigation
+  into Cases
+- [x] bound multipart parsing, image dimensions, normalized size, per-workspace storage, and
+  per-assessment image materialization at both the Next.js and Django boundaries
+- [x] document private S3-compatible production storage and lock the PR 3 Work Status collaboration
+  contract
+
+```text
+backend Ruff            PASS - format and lint
+migration consistency   PASS - no model changes missing migrations
+Django checks           PASS - local and production deployment checks
+backend dependencies    PASS - pip check found no broken requirements
+backend tests           PASS - 119 tests, 91.23% branch coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 18 files, 49 tests
+frontend build          PASS - Next.js 16.3.1, 33 generated pages
+browser verification    PASS - 1280 desktop light/system-dark and 390x844 responsive mobile,
+                          meaningful content, zero overflow, and no framework error overlay;
+                          authenticated case components/BFF routes covered by tests because this
+                          clean worktree has no local WorkOS callback/session configuration
+security diff scan      PASS AFTER HARDENING - complete changed-file coverage; assessment
+                          provenance, pre-auth multipart parsing, storage quotas, immutable local
+                          snapshots, and bounded image materialization remediated and tested
+```
 
 ## Operations Cases and durable assignments
 

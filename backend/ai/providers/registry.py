@@ -30,6 +30,7 @@ class ProviderDefinition:
     label: str
     description: str
     supports_personal_key: bool = True
+    supports_images: bool = False
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ PROVIDER_CATALOG = (
         id="gemini",
         label="Gemini",
         description="Google models with the default low-cost structured workflow route.",
+        supports_images=True,
     ),
     ProviderDefinition(
         id="openai",
@@ -256,3 +258,17 @@ def _connector_model(connector: LocalConnector, intelligence: IntelligenceLevel)
 
 def max_output_tokens_for(intelligence: IntelligenceLevel) -> int:
     return settings.AI_MAX_OUTPUT_TOKENS[intelligence]
+
+
+def provider_definition_for(provider: ProviderName) -> ProviderDefinition:
+    return next(definition for definition in PROVIDER_CATALOG if definition.id == provider)
+
+
+def models_for_provider(provider: ProviderName, *, user: AppUser) -> dict[str, str | None]:
+    models: dict[str, str | None] = {}
+    for intelligence in ("fast", "balanced", "high"):
+        try:
+            models[intelligence] = model_for(provider, intelligence, user=user)
+        except ProviderFailure:
+            models[intelligence] = None
+    return models

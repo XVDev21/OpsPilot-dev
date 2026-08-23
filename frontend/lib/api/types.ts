@@ -22,6 +22,10 @@ import type {
   workspaceMemberListSchema,
   caseStatusSchema,
   caseDispositionSchema,
+  caseIntentSchema,
+  casePublicationStateSchema,
+  caseEvidenceSchema,
+  caseAssessmentSchema,
   operationsCaseSummarySchema,
   operationsCaseListSchema,
   operationsCaseDetailSchema,
@@ -53,6 +57,10 @@ export type WorkspaceMember = z.infer<typeof workspaceMemberSchema>;
 export type WorkspaceMemberList = z.infer<typeof workspaceMemberListSchema>;
 export type CaseStatus = z.infer<typeof caseStatusSchema>;
 export type CaseDisposition = z.infer<typeof caseDispositionSchema>;
+export type CaseIntent = z.infer<typeof caseIntentSchema>;
+export type CasePublicationState = z.infer<typeof casePublicationStateSchema>;
+export type CaseEvidence = z.infer<typeof caseEvidenceSchema>;
+export type CaseAssessment = z.infer<typeof caseAssessmentSchema>;
 export type OperationsCaseSummary = z.infer<typeof operationsCaseSummarySchema>;
 export type OperationsCaseList = z.infer<typeof operationsCaseListSchema>;
 export type OperationsCaseDetail = z.infer<typeof operationsCaseDetailSchema>;

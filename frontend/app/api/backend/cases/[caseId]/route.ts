@@ -9,7 +9,10 @@ interface CaseRouteProps {
 
 export async function GET(_request: Request, { params }: CaseRouteProps) {
   try {
-    const [{ caseId }, accessToken] = await Promise.all([params, requireAccessToken()]);
+    const [{ caseId }, accessToken] = await Promise.all([
+      params,
+      requireAccessToken(),
+    ]);
     return Response.json(await djangoApi.getCase(accessToken, caseId));
   } catch (error) {
     return apiErrorResponse(error);
@@ -18,19 +21,27 @@ export async function GET(_request: Request, { params }: CaseRouteProps) {
 
 export async function PATCH(request: Request, { params }: CaseRouteProps) {
   try {
-    const [{ caseId }, accessToken] = await Promise.all([params, requireAccessToken()]);
-    const input = updateCaseInputSchema.safeParse(await request.json().catch(() => null));
+    const [{ caseId }, accessToken] = await Promise.all([
+      params,
+      requireAccessToken(),
+    ]);
+    const input = updateCaseInputSchema.safeParse(
+      await request.json().catch(() => null),
+    );
     if (!input.success) {
       throw new ApiError(
         {
           code: "VALIDATION_ERROR",
-          message: "Review the case state, disposition, confidence, and resolution.",
+          message:
+            "Review the case state, publication state, disposition, and resolution.",
           retryable: false,
         },
         422,
       );
     }
-    return Response.json(await djangoApi.updateCase(accessToken, caseId, input.data));
+    return Response.json(
+      await djangoApi.updateCase(accessToken, caseId, input.data),
+    );
   } catch (error) {
     return apiErrorResponse(error);
   }

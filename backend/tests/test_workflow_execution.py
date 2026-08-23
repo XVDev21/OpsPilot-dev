@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from accounts.models import AppUser
 from ai.providers.registry import ResolvedProvider
 from ai.types import ProviderFailure, ProviderResult
-from cases.models import CaseEvent
+from cases.models import CaseAssessment, CaseEvent
 from cases.services import create_case
 from runs.models import WorkflowRun
 
@@ -120,7 +120,9 @@ def test_all_live_workflows_complete_and_persist(
     assert body["provider"] == "openai"
     assert body["credential_source"] == "platform"
     assert body["intelligence"] == "balanced"
-    assert body["prompt_version"] == "v3-team-routing"
+    assert body["prompt_version"] == (
+        "v4-case-assessment" if workflow_id == "bug-triage" else "v3-team-routing"
+    )
     assert body["input_tokens"] == 101
     assert body["output_tokens"] == 53
     assert body["expires_at"] is not None
@@ -158,6 +160,7 @@ def test_workflow_run_can_be_linked_to_an_operations_case(
     assert response.json()["case_id"] == str(case.id)
     assert WorkflowRun.objects.get(id=response.json()["id"]).case_id == case.id
     assert CaseEvent.objects.filter(case=case, event_type="workflow-linked").exists()
+    assert not CaseAssessment.objects.filter(case=case).exists()
 
 
 def test_unknown_workflow_and_bad_input_do_not_call_provider(
@@ -271,55 +274,27 @@ def test_execution_options_report_provider_availability(authenticated_client: Cl
     assert response.json()["defaultProvider"] == "gemini"
     assert response.json()["defaultIntelligence"] == "fast"
     assert response.json()["retentionDays"] == 30
-    assert response.json()["providers"] == [
-        {
-            "id": "gemini",
-            "label": "Gemini",
-            "description": "Google models with the default low-cost structured workflow route.",
-            "enabled": True,
-            "credentialSource": "platform",
-            "supportsPersonalKey": True,
-        },
-        {
-            "id": "openai",
-            "label": "OpenAI",
-            "description": "OpenAI Responses models using the same validated workflow contracts.",
-            "enabled": False,
-            "credentialSource": None,
-            "supportsPersonalKey": True,
-        },
-        {
-            "id": "qwen",
-            "label": "Qwen",
-            "description": "Alibaba Cloud Model Studio through its OpenAI-compatible API.",
-            "enabled": False,
-            "credentialSource": None,
-            "supportsPersonalKey": True,
-        },
-        {
-            "id": "bedrock",
-            "label": "Amazon Bedrock",
-            "description": (
-                "AWS-hosted foundation models through a personal Bedrock bearer API key."
-            ),
-            "enabled": False,
-            "credentialSource": None,
-            "supportsPersonalKey": True,
-        },
-        {
-            "id": "custom",
-            "label": "OpenAI-compatible",
-            "description": "A public HTTPS endpoint with account-owned model routing.",
-            "enabled": False,
-            "credentialSource": None,
-            "supportsPersonalKey": True,
-        },
-        {
-            "id": "local",
-            "label": "Local connector",
-            "description": "Ollama, LM Studio, or vLLM through an outbound paired connector.",
-            "enabled": False,
-            "credentialSource": None,
-            "supportsPersonalKey": False,
-        },
+    providers = response.json()["providers"]
+    assert [provider["id"] for provider in providers] == [
+        "gemini",
+        "openai",
+        "qwen",
+        "bedrock",
+        "custom",
+        "local",
     ]
+    assert providers[0] == {
+        "id": "gemini",
+        "label": "Gemini",
+        "description": "Google models with the default low-cost structured workflow route.",
+        "enabled": True,
+        "credentialSource": "platform",
+        "supportsPersonalKey": True,
+        "supportsImages": True,
+        "models": {
+            "fast": "gemini-3.5-flash-lite",
+            "balanced": "gemini-3.6-flash",
+            "high": "gemini-2.5-pro",
+        },
+    }
+    assert all(not provider["supportsImages"] for provider in providers[1:])

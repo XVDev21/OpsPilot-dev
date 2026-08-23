@@ -8,7 +8,16 @@ export async function GET(request: Request) {
     const accessToken = await requireAccessToken();
     const source = new URL(request.url).searchParams;
     const allowed = new URLSearchParams();
-    for (const key of ["page", "pageSize", "status", "disposition", "assigneeId", "search"]) {
+    for (const key of [
+      "page",
+      "pageSize",
+      "status",
+      "disposition",
+      "intent",
+      "publicationState",
+      "assigneeId",
+      "search",
+    ]) {
       const value = source.get(key);
       if (value) allowed.set(key, value);
     }
@@ -23,18 +32,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const accessToken = await requireAccessToken();
-    const input = createCaseInputSchema.safeParse(await request.json().catch(() => null));
+    const input = createCaseInputSchema.safeParse(
+      await request.json().catch(() => null),
+    );
     if (!input.success) {
       throw new ApiError(
         {
           code: "VALIDATION_ERROR",
-          message: "Add a clear case title and enough context for another person to act.",
+          message:
+            "Add a clear case title and enough context for another person to act.",
           retryable: false,
         },
         422,
       );
     }
-    return Response.json(await djangoApi.createCase(accessToken, input.data), { status: 201 });
+    return Response.json(await djangoApi.createCase(accessToken, input.data), {
+      status: 201,
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }
