@@ -2,6 +2,11 @@ import json
 from pathlib import Path
 
 from accounts.schemas import AppUserSchema
+from cases.schemas import (
+    CaseDetailSchema,
+    CaseListResponse,
+    WorkspaceMemberList,
+)
 from common.schemas import ApiErrorEnvelope
 from integrations.schemas import ProviderCredentialList
 from runs.schemas import RunListResponse, WorkflowRunSchema
@@ -21,3 +26,6 @@ def test_shared_contract_fixtures_validate_against_backend_schemas() -> None:
     RunListResponse.model_validate(fixture("run-list.json"))
     ExecutionOptions.model_validate(fixture("execution-options.json"))
     ProviderCredentialList.model_validate(fixture("provider-credentials.json"))
+    WorkspaceMemberList.model_validate(fixture("workspace-members.json"))
+    CaseDetailSchema.model_validate(fixture("operations-case.json"))
+    CaseListResponse.model_validate(fixture("operations-case-list.json"))

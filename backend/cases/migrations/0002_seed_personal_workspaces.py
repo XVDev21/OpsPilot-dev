@@ -65,4 +65,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_personal_workspaces, migrations.RunPython.noop),
     ]
-

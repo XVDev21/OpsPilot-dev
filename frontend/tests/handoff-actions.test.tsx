@@ -18,6 +18,7 @@ describe("bug triage handoffs", () => {
     const user = userEvent.setup();
     const create = vi.spyOn(browserApi, "createHandoff").mockResolvedValue({
       id: "13dd407e-fdc8-4b31-969a-c8ece667a9ee",
+      caseId: null,
       sourceRunId: "6544ba3d-0791-4ad4-a57b-7d3959aa2fbd",
       target: "work-item",
       status: "draft",

@@ -181,7 +181,7 @@ def update_case(
         if status == OperationsCase.Status.RESOLVED:
             case.resolved_at = now
             update_fields.append("resolved_at")
-        elif previous == OperationsCase.Status.RESOLVED:
+        elif previous == OperationsCase.Status.RESOLVED and status != OperationsCase.Status.CLOSED:
             case.resolved_at = None
             update_fields.append("resolved_at")
         if status == OperationsCase.Status.CLOSED:

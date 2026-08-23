@@ -4,6 +4,9 @@ import executionOptionsFixture from "../../contracts/v1/execution-options.json";
 import providerCredentialsFixture from "../../contracts/v1/provider-credentials.json";
 import runListFixture from "../../contracts/v1/run-list.json";
 import workflowRunFixture from "../../contracts/v1/workflow-run.json";
+import operationsCaseFixture from "../../contracts/v1/operations-case.json";
+import operationsCaseListFixture from "../../contracts/v1/operations-case-list.json";
+import workspaceMembersFixture from "../../contracts/v1/workspace-members.json";
 import { runToResult } from "@/features/workflows/run-adapter";
 import { ApiError } from "@/lib/api/errors";
 import {
@@ -14,6 +17,9 @@ import {
   providerCredentialListSchema,
   runListResponseSchema,
   workflowRunSchema,
+  operationsCaseDetailSchema,
+  operationsCaseListSchema,
+  workspaceMemberListSchema,
 } from "@/lib/api/schemas";
 
 describe("live API contracts", () => {
@@ -31,6 +37,18 @@ describe("live API contracts", () => {
   it("accepts the shared paginated history fixture", () => {
     expect(runListResponseSchema.parse(runListFixture)).toHaveProperty("items");
     expect(backendRunListSchema.parse(runListFixture)).toHaveProperty("items");
+  });
+
+  it("accepts operations-case and workspace-member fixtures", () => {
+    expect(workspaceMemberListSchema.parse(workspaceMembersFixture).items).toHaveLength(1);
+    expect(operationsCaseDetailSchema.parse(operationsCaseFixture)).toMatchObject({
+      key: "OPS-0001",
+      disposition: "configuration-change",
+    });
+    expect(operationsCaseListSchema.parse(operationsCaseListFixture)).toMatchObject({
+      total: 1,
+      hasMore: false,
+    });
   });
 
   it("accepts server-owned provider and intelligence options", () => {

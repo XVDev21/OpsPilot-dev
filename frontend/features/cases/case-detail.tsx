@@ -12,10 +12,9 @@ import {
   Clock3,
   LoaderCircle,
   Route,
-  UserRoundCog,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,13 +72,8 @@ export function CaseDetail({ caseId }: { caseId: string }) {
   const queryClient = useQueryClient();
   const detail = useQuery({ queryKey: ["case", caseId], queryFn: () => browserApi.getCase(caseId) });
   const members = useQuery({ queryKey: ["workspace-members"], queryFn: browserApi.listWorkspaceMembers });
-  const [dueDate, setDueDate] = useState("");
-  const [resolution, setResolution] = useState("");
-  useEffect(() => {
-    if (!detail.data) return;
-    setDueDate(detail.data.dueDate ?? "");
-    setResolution(detail.data.resolutionSummary);
-  }, [detail.data]);
+  const [dueDateDraft, setDueDateDraft] = useState<string | null>(null);
+  const [resolutionDraft, setResolutionDraft] = useState<string | null>(null);
 
   const refresh = async () => {
     await Promise.all([
@@ -100,6 +94,8 @@ export function CaseDetail({ caseId }: { caseId: string }) {
   }
 
   const item = detail.data;
+  const dueDate = dueDateDraft ?? item.dueDate ?? "";
+  const resolution = resolutionDraft ?? item.resolutionSummary;
   const transitionOptions = [item.status, ...allowedCaseTransitions[item.status]];
   const mutationError = updateCase.error || assign.error || updateWork.error;
 
@@ -123,7 +119,7 @@ export function CaseDetail({ caseId }: { caseId: string }) {
               <div><label htmlFor="case-state" className="text-xs font-bold text-foreground">State</label><Select id="case-state" className="mt-1.5" value={item.status} disabled={updateCase.isPending} onChange={(event) => updateCase.mutate({ status: event.target.value as CaseStatus })}>{transitionOptions.map((value) => <option key={value} value={value}>{caseStatusLabels[value]}</option>)}</Select></div>
               <div><label htmlFor="case-type" className="text-xs font-bold text-foreground">Disposition</label><Select id="case-type" className="mt-1.5" value={item.disposition} disabled={updateCase.isPending} onChange={(event) => updateCase.mutate({ disposition: event.target.value as CaseDisposition })}>{caseDispositions.map((value) => <option key={value} value={value}>{caseDispositionLabels[value]}</option>)}</Select></div>
               <div><label htmlFor="case-owner" className="text-xs font-bold text-foreground">Case owner</label><Select id="case-owner" className="mt-1.5" value={item.assignee?.id ?? ""} disabled={assign.isPending} onChange={(event) => assign.mutate(event.target.value || null)}><option value="">Unassigned</option>{members.data?.items.map((member) => <option key={member.id} value={member.id}>{member.name}{member.isSample ? " · sample" : ""}</option>)}</Select></div>
-              <div><label htmlFor="case-due-date" className="text-xs font-bold text-foreground">Target date</label><div className="mt-1.5 flex gap-2"><Input id="case-due-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /><Button type="button" size="sm" variant="secondary" onClick={() => updateCase.mutate({ dueDate: dueDate || null })} disabled={updateCase.isPending || dueDate === (item.dueDate ?? "")}>Save</Button></div></div>
+              <div><label htmlFor="case-due-date" className="text-xs font-bold text-foreground">Target date</label><div className="mt-1.5 flex gap-2"><Input id="case-due-date" type="date" value={dueDate} onChange={(event) => setDueDateDraft(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateCase.mutate({ dueDate: dueDate || null })} disabled={updateCase.isPending || dueDate === (item.dueDate ?? "")}>Save</Button></div></div>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-2 border-t border-border pt-5"><div className="rounded-xl bg-surface-raised p-3"><p className="font-mono text-lg font-bold text-foreground">{item.workItemCount}</p><p className="mt-1 text-[0.6875rem] text-foreground-muted">Work items</p></div><div className="rounded-xl bg-surface-raised p-3"><p className="font-mono text-lg font-bold text-foreground">{item.confidence === null ? "—" : `${Math.round(item.confidence * 100)}%`}</p><p className="mt-1 text-[0.6875rem] text-foreground-muted">Confidence</p></div></div>
           </aside>
@@ -148,7 +144,7 @@ export function CaseDetail({ caseId }: { caseId: string }) {
 
           <section className="rounded-[var(--radius-panel)] border border-border bg-surface-raised p-5 shadow-[var(--shadow-sm)] sm:p-6" aria-labelledby="resolution-heading">
             <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-success/10 text-success"><CheckCircle2 aria-hidden="true" className="size-5" /></span><div><h2 id="resolution-heading" className="text-lg font-bold text-foreground">Resolution record</h2><p className="mt-1 text-xs leading-5 text-foreground-muted">Capture what changed, what was verified, and what the user should expect now.</p></div></div>
-            <Textarea className="mt-4 min-h-28" value={resolution} onChange={(event) => setResolution(event.target.value)} placeholder="Example: Enabled Holiday fields in Payroll Settings, verified visibility for the client role, and documented the configuration path." maxLength={4000} />
+            <Textarea className="mt-4 min-h-28" value={resolution} onChange={(event) => setResolutionDraft(event.target.value)} placeholder="Example: Enabled Holiday fields in Payroll Settings, verified visibility for the client role, and documented the configuration path." maxLength={4000} />
             <Button type="button" variant="secondary" className="mt-3" disabled={updateCase.isPending || resolution === item.resolutionSummary} onClick={() => updateCase.mutate({ resolutionSummary: resolution })}>Save resolution</Button>
           </section>
         </div>

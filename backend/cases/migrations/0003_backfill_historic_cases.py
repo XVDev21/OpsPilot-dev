@@ -111,4 +111,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(backfill_historic_cases, migrations.RunPython.noop),
     ]
-

@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Observable Live workflows + governed model connectivity + delivery handoffs
-**Status:** Implementation complete; release gates passed; draft PR ready
+**Current milestone:** Operations Cases + durable workspace assignments
+**Status:** Implementation complete; final security verification in progress
 
 ## Milestones
 
@@ -17,8 +17,42 @@
 - [x] Observable execution phases and real elapsed-time feedback
 - [x] Personal Bedrock, governed compatible API, and outbound local-model connections
 - [x] Human-reviewed Bug Triage handoffs and personal Work Items
+- [x] Operations Cases, durable personal workspaces, and real member assignments
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Operations Cases and durable assignments
+
+- [x] provision one personal workspace for every existing and new account
+- [x] persist the five clearly identified sample collaborators as workspace-owned member records
+- [x] replace free-form Work Item assignee strings with validated member relationships while
+  preserving known and unknown legacy assignment keys
+- [x] add workspace-scoped Operations Cases, current assignments, and append-only Case Events
+- [x] attach workflow runs, handoffs, and Work Items to cases through nullable relationships so
+  standalone workflow compatibility remains intact
+- [x] add paginated case APIs with search, state, disposition, and assignee filters
+- [x] enforce workspace authorization and server-owned case-state transitions
+- [x] add the responsive case register, case detail control plane, delivery view, resolution record,
+  and activity timeline
+- [x] support persistent assignment, reassignment, due dates, Work Item completion, and assignee
+  filtering with actual PostgreSQL relationships
+- [x] keep sample identities non-authenticating and attribute activity only to the signed-in owner
+- [x] add shared case/member fixtures and a backwards/forwards migration preservation test
+- [x] document backend-first deployment and the future Slack/Pumble/Linear/email event seam
+
+```text
+backend Ruff            PASS - format and lint
+migration consistency   PASS - model state current; legacy assignment preservation tested
+Django checks           PASS - local checks
+backend tests           PASS - 108 tests, 91% branch coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 17 files, 44 tests
+frontend build          PASS - Next.js 16.3, 36 generated routes/assets
+browser verification    PASS - 1440 desktop light, 390x844 mobile dark, system dark with reduced
+                          motion, 44px controls, zero overflow, zero production console errors
+security diff scan      PENDING final gate
+```
 
 ## Observable workflows, model connectivity, and delivery handoffs
 

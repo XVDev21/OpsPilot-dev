@@ -1,0 +1,44 @@
+{
+  "id": "7fc3b3bd-9361-43f0-87d2-8b7d96e5a0cc",
+  "key": "OPS-0001",
+  "title": "Holiday field is missing",
+  "summary": "Verify whether the payroll Holiday setting is disabled.",
+  "status": "triaging",
+  "disposition": "configuration-change",
+  "confidence": 0.82,
+  "dueDate": "2026-08-31",
+  "assignee": {
+    "id": "5e677b3b-a0f4-463d-af5c-0dfc13d8467a",
+    "key": "sample-mina-park",
+    "name": "Mina Park",
+    "email": "mina.park@example.invalid",
+    "initials": "MP",
+    "role": "Software engineer",
+    "discipline": "Engineering",
+    "focus": "Owns code changes after the issue has enough evidence.",
+    "availability": "Focused",
+    "workflowFit": ["Bug fixing", "Work updates"],
+    "tone": "indigo",
+    "isSample": true,
+    "linkedAccount": false
+  },
+  "workItemCount": 0,
+  "completedWorkItemCount": 0,
+  "createdAt": "2026-08-23T08:00:00Z",
+  "updatedAt": "2026-08-23T08:05:00Z",
+  "description": "A payroll consultant cannot see the Holiday field while reviewing a client run.",
+  "resolutionSummary": "",
+  "resolvedAt": null,
+  "closedAt": null,
+  "workflowRuns": [],
+  "workItems": [],
+  "events": [
+    {
+      "id": "e5031286-cbd7-4be6-8a4f-2847f232e1f1",
+      "type": "created",
+      "actorName": "Pilot User",
+      "payload": { "status": "new", "disposition": "configuration-change" },
+      "createdAt": "2026-08-23T08:00:00Z"
+    }
+  ]
+}

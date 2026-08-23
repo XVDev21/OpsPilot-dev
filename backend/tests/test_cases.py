@@ -3,7 +3,8 @@ from django.test import Client
 
 from accounts.models import AppUser
 from cases.models import CaseEvent, OperationsCase, WorkspaceMember
-from cases.services import create_case
+from cases.selectors import member_for_key
+from cases.services import assign_case, create_case, record_case_event
 
 pytestmark = pytest.mark.django_db
 
@@ -101,6 +102,53 @@ def test_case_lifecycle_assignment_filters_and_timeline(authenticated_client: Cl
     assert listed.json()["total"] == 1
     assert listed.json()["items"][0]["id"] == body["id"]
     assert CaseEvent.objects.filter(case_id=body["id"], event_type="status-changed").count() == 2
+
+    enriched = authenticated_client.patch(
+        f"/api/v1/cases/{body['id']}",
+        data={
+            "disposition": "process-guidance",
+            "confidence": None,
+            "dueDate": None,
+            "resolutionSummary": "Verified the supported payroll configuration path.",
+        },
+        content_type="application/json",
+    )
+    assert enriched.status_code == 200
+    assert enriched.json()["dueDate"] is None
+    assert enriched.json()["confidence"] is None
+    assert enriched.json()["resolutionSummary"].startswith("Verified")
+
+    resolved = authenticated_client.patch(
+        f"/api/v1/cases/{body['id']}",
+        data={"status": "resolved"},
+        content_type="application/json",
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["resolvedAt"] is not None
+    closed = authenticated_client.patch(
+        f"/api/v1/cases/{body['id']}",
+        data={"status": "closed"},
+        content_type="application/json",
+    )
+    assert closed.json()["resolvedAt"] is not None
+    assert closed.json()["closedAt"] is not None
+    reopened = authenticated_client.patch(
+        f"/api/v1/cases/{body['id']}",
+        data={"status": "triaging"},
+        content_type="application/json",
+    )
+    assert reopened.json()["closedAt"] is None
+
+    unassigned = assign_case(user=user, case_id=body["id"], assignee_id=None)
+    event_count = CaseEvent.objects.filter(case=unassigned).count()
+    assign_case(user=user, case_id=body["id"], assignee_id=None)
+    assert unassigned.assignment.assignee is None
+    assert CaseEvent.objects.filter(case=unassigned).count() == event_count
+    record_case_event(case=unassigned, event_type=CaseEvent.Type.UPDATED, actor=None)
+    detail = authenticated_client.get(f"/api/v1/cases/{body['id']}").json()
+    assert detail["events"][0]["actorName"] == "OpsPilot"
+    assert member_for_key(user=user, key="") is None
+    assert member_for_key(user=user, key="sample-mina-park") == mina
 
 
 def test_case_pagination_and_workspace_authorization(authenticated_client: Client) -> None:

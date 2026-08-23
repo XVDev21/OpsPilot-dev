@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "id": "5e677b3b-a0f4-463d-af5c-0dfc13d8467a",
+      "key": "sample-mina-park",
+      "name": "Mina Park",
+      "email": "mina.park@example.invalid",
+      "initials": "MP",
+      "role": "Software engineer",
+      "discipline": "Engineering",
+      "focus": "Owns code changes after the issue has enough evidence.",
+      "availability": "Focused",
+      "workflowFit": ["Bug fixing", "Work updates"],
+      "tone": "indigo",
+      "isSample": true,
+      "linkedAccount": false
+    }
+  ]
+}
