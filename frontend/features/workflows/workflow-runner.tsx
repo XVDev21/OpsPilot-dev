@@ -181,12 +181,14 @@ function WorkflowRunnerCore({
   provider,
   intelligence,
   handoffId,
+  caseId,
 }: {
   workflowId: WorkflowId;
   mode: AppMode;
   provider: AIProvider;
   intelligence: IntelligenceLevel;
   handoffId: string | null;
+  caseId: string | null;
 }) {
   const [result, setResult] = useState<DemoResult | null>(null);
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null);
@@ -203,7 +205,7 @@ function WorkflowRunnerCore({
   });
   const liveMutation = useMutation({
     mutationFn: (input: WorkflowInput) =>
-      browserApi.createRun(workflowId, input, { provider, intelligence }, handoffId),
+      browserApi.createRun(workflowId, input, { provider, intelligence }, handoffId, caseId),
   });
 
   async function execute(input: WorkflowInput) {
@@ -352,7 +354,15 @@ function WorkflowRunnerCore({
   );
 }
 
-export function ManagedWorkflowRunner({ workflowId, handoffId = null }: { workflowId: WorkflowId; handoffId?: string | null }) {
+export function ManagedWorkflowRunner({
+  workflowId,
+  handoffId = null,
+  caseId = null,
+}: {
+  workflowId: WorkflowId;
+  handoffId?: string | null;
+  caseId?: string | null;
+}) {
   const { mode, provider, intelligence } = useAppMode();
   return (
     <WorkflowRunnerCore
@@ -362,6 +372,7 @@ export function ManagedWorkflowRunner({ workflowId, handoffId = null }: { workfl
       provider={provider}
       intelligence={intelligence}
       handoffId={handoffId}
+      caseId={caseId}
     />
   );
 }
@@ -374,6 +385,7 @@ export function DemoWorkflowRunner({ workflowId }: { workflowId: WorkflowId }) {
       provider="gemini"
       intelligence="fast"
       handoffId={null}
+      caseId={null}
     />
   );
 }

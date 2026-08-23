@@ -2,6 +2,7 @@ from django.conf import settings
 from ninja import NinjaAPI
 
 from accounts.api import router as accounts_router
+from cases.api import router as cases_router
 from common.api import router as common_router
 from common.auth import workos_bearer
 from common.errors import register_error_handlers
@@ -22,6 +23,7 @@ api = NinjaAPI(
 register_error_handlers(api)
 api.add_router("", common_router)
 api.add_router("", accounts_router)
+api.add_router("", cases_router)
 api.add_router("", integrations_router)
 api.add_router("", workflows_router)
 api.add_router("", runs_router)

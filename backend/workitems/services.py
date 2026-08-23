@@ -4,6 +4,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import AppUser
+from cases.models import CaseEvent
+from cases.selectors import case_for_user, member_for_user
+from cases.services import record_case_event
 from common.errors import OpsPilotError
 from runs.models import WorkflowRun
 from runs.selectors import run_for_user
@@ -13,6 +16,7 @@ from workitems.models import WorkflowHandoff, WorkItem
 def _handoff_dict(handoff: WorkflowHandoff) -> dict:
     return {
         "id": handoff.id,
+        "caseId": handoff.case_id,
         "sourceRunId": handoff.source_run_id,
         "target": handoff.target,
         "status": handoff.status,
@@ -38,11 +42,17 @@ def create_handoff(*, user: AppUser, run_id: UUID, target: str) -> dict:
         source_run=source,
         target=target,
         status=WorkflowHandoff.Status.DRAFT,
-        defaults={"draft_input": draft_input},
+        defaults={"draft_input": draft_input, "case": source.case},
     )
+    update_fields: list[str] = []
     if not created and handoff.draft_input != draft_input:
         handoff.draft_input = draft_input
-        handoff.save(update_fields=["draft_input"])
+        update_fields.append("draft_input")
+    if not created and handoff.case_id != source.case_id:
+        handoff.case = source.case
+        update_fields.append("case")
+    if update_fields:
+        handoff.save(update_fields=update_fields)
     return _handoff_dict(handoff)
 
 
@@ -99,7 +109,8 @@ def create_work_item(
     title: str,
     description: str,
     kind: str,
-    assignee_id: str,
+    assignee_id: UUID | None,
+    case_id: UUID | None,
     due_date,
 ) -> WorkItem:
     handoff = handoff_for_user(user=user, handoff_id=handoff_id) if handoff_id else None
@@ -109,29 +120,95 @@ def create_work_item(
             message="That draft cannot create a work item.",
             status=422,
         )
+    requested_case = case_for_user(user=user, case_id=case_id) if case_id else None
+    if handoff is not None and requested_case is not None and handoff.case_id != requested_case.id:
+        raise OpsPilotError(
+            code="CASE_CONTEXT_MISMATCH",
+            message="That work-item draft belongs to another operations case.",
+            status=422,
+        )
+    case = requested_case or (handoff.case if handoff else None)
+    assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
     item = WorkItem.objects.create(
         user=user,
+        case=case,
         source_run=handoff.source_run if handoff else None,
         source_handoff=handoff,
         title=title,
         description=description,
         kind=kind,
-        assignee_id=assignee_id,
+        assignee=assignee,
         due_date=due_date,
     )
     if handoff is not None:
         handoff.status = WorkflowHandoff.Status.CONVERTED
         handoff.converted_at = timezone.now()
         handoff.save(update_fields=["status", "converted_at"])
+    if case is not None:
+        record_case_event(
+            case=case,
+            event_type=CaseEvent.Type.WORK_ITEM_CREATED,
+            actor=user,
+            payload={
+                "workItemId": str(item.id),
+                "title": item.title,
+                "status": item.status,
+                "assigneeId": str(assignee.id) if assignee else None,
+                "assigneeName": assignee.name if assignee else None,
+            },
+        )
+        case.save(update_fields=["updated_at"])
     return item
 
 
-def update_work_item_status(*, user: AppUser, item_id: UUID, status: str) -> WorkItem:
-    item = WorkItem.objects.filter(user=user, id=item_id).first()
+@transaction.atomic
+def update_work_item(
+    *,
+    user: AppUser,
+    item_id: UUID,
+    status: str | None = None,
+    assignee_id: UUID | None = None,
+    assignee_supplied: bool = False,
+    due_date=None,
+    due_date_supplied: bool = False,
+) -> WorkItem:
+    item = WorkItem.objects.select_related("case", "assignee").filter(user=user, id=item_id).first()
     if item is None:
         raise OpsPilotError(code="NOT_FOUND", message="That work item was not found.", status=404)
-    item.status = status
-    item.save(update_fields=["status", "updated_at"])
+    changes: dict[str, dict] = {}
+    update_fields: list[str] = []
+    if status is not None and status != item.status:
+        changes["status"] = {"from": item.status, "to": status}
+        item.status = status
+        update_fields.append("status")
+    if assignee_supplied:
+        assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
+        if assignee != item.assignee:
+            changes["assignee"] = {
+                "fromMemberId": str(item.assignee_id) if item.assignee_id else None,
+                "fromMemberName": item.assignee.name if item.assignee else None,
+                "toMemberId": str(assignee.id) if assignee else None,
+                "toMemberName": assignee.name if assignee else None,
+            }
+            item.assignee = assignee
+            update_fields.append("assignee")
+    if due_date_supplied and due_date != item.due_date:
+        changes["dueDate"] = {
+            "from": item.due_date.isoformat() if item.due_date else None,
+            "to": due_date.isoformat() if due_date else None,
+        }
+        item.due_date = due_date
+        update_fields.append("due_date")
+    if update_fields:
+        item.save(update_fields=[*update_fields, "updated_at"])
+        if item.case is not None:
+            record_case_event(
+                case=item.case,
+                event_type=CaseEvent.Type.WORK_ITEM_UPDATED,
+                actor=user,
+                payload={"workItemId": str(item.id), "title": item.title, "changes": changes},
+            )
+            item.case.save(update_fields=["updated_at"])
     return item
 
 
@@ -182,7 +259,8 @@ def build_handoff_input(*, source: WorkflowRun, target: str) -> dict:
             "title": source_title,
             "description": f"{summary}\n\nConfirmed facts\n{facts}\n\nNext checks\n{checks}"[:6000],
             "kind": kind,
-            "assigneeId": owner_id,
+            "assigneeKey": owner_id,
+            "assigneeId": None,
             "dueDate": None,
         }
     raise OpsPilotError(

@@ -14,9 +14,19 @@ import {
   workItemListSchema,
   workItemSchema,
   workflowRunSchema,
+  workspaceMemberListSchema,
+  operationsCaseListSchema,
+  operationsCaseDetailSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
-import type { AIProvider, IntelligenceLevel, ProviderCredentialInput } from "@/lib/api/types";
+import type {
+  AIProvider,
+  CreateCaseInput,
+  IntelligenceLevel,
+  ProviderCredentialInput,
+  UpdateCaseInput,
+  WorkItemUpdate,
+} from "@/lib/api/types";
 
 const requestTimeoutMs = 30_000;
 
@@ -149,13 +159,19 @@ export const djangoApi = {
     input: unknown,
     options: { provider: AIProvider; intelligence: IntelligenceLevel },
     handoffId?: string | null,
+    caseId?: string | null,
   ) {
     return parseApiResponse(
       workflowRunSchema,
       await request<unknown>(`/workflows/${workflowId}/runs`, {
         accessToken,
         method: "POST",
-        body: JSON.stringify({ input, options, ...(handoffId ? { handoffId } : {}) }),
+        body: JSON.stringify({
+          input,
+          options,
+          ...(handoffId ? { handoffId } : {}),
+          ...(caseId ? { caseId } : {}),
+        }),
       }),
     );
   },
@@ -210,8 +226,11 @@ export const djangoApi = {
       await request<unknown>(`/handoffs/${encodeURIComponent(handoffId)}`, { accessToken }),
     );
   },
-  async listWorkItems(accessToken: string) {
-    return parseApiResponse(workItemListSchema, await request<unknown>("/work-items", { accessToken }));
+  async listWorkItems(accessToken: string, search = "") {
+    return parseApiResponse(
+      workItemListSchema,
+      await request<unknown>(`/work-items${search}`, { accessToken }),
+    );
   },
   async createWorkItem(accessToken: string, input: unknown) {
     return parseApiResponse(
@@ -219,13 +238,61 @@ export const djangoApi = {
       await request<unknown>("/work-items", { accessToken, method: "POST", body: JSON.stringify(input) }),
     );
   },
-  async updateWorkItemStatus(accessToken: string, itemId: string, status: string) {
+  async updateWorkItem(accessToken: string, itemId: string, input: WorkItemUpdate) {
     return parseApiResponse(
       workItemSchema,
       await request<unknown>(`/work-items/${encodeURIComponent(itemId)}`, {
         accessToken,
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async listWorkspaceMembers(accessToken: string) {
+    return parseApiResponse(
+      workspaceMemberListSchema,
+      await request<unknown>("/workspace/members", { accessToken }),
+    );
+  },
+  async listCases(accessToken: string, search = "") {
+    return parseApiResponse(
+      operationsCaseListSchema,
+      await request<unknown>(`/cases${search}`, { accessToken }),
+    );
+  },
+  async createCase(accessToken: string, input: CreateCaseInput) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>("/cases", {
+        accessToken,
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async getCase(accessToken: string, caseId: string) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}`, { accessToken }),
+    );
+  },
+  async updateCase(accessToken: string, caseId: string, input: UpdateCaseInput) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}`, {
+        accessToken,
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async assignCase(accessToken: string, caseId: string, assigneeId: string | null) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}/assignment`, {
+        accessToken,
+        method: "PUT",
+        body: JSON.stringify({ assigneeId }),
       }),
     );
   },

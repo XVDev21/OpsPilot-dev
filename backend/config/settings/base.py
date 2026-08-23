@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "accounts.apps.AccountsConfig",
+    "cases.apps.CasesConfig",
     "common.apps.CommonConfig",
     "integrations.apps.IntegrationsConfig",
     "runs.apps.RunsConfig",

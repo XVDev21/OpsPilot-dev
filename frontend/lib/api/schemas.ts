@@ -34,6 +34,7 @@ export const createRunRequestSchema = z.object({
   input: z.unknown(),
   options: runOptionsSchema,
   handoffId: z.string().uuid().nullable().optional(),
+  caseId: z.string().uuid().nullable().optional(),
 });
 
 export const executionOptionsSchema = z.object({
@@ -91,6 +92,7 @@ export const providerCredentialListSchema = z.object({
 
 export const workflowRunSchema = z.object({
   id: z.string().min(1),
+  case_id: z.string().uuid().nullable(),
   workflow_id: z.enum(workflowIds),
   status: runStatusSchema,
   execution_phase: runExecutionPhaseSchema,
@@ -145,6 +147,7 @@ export const localConnectorPairingInputSchema = z.object({
 
 export const workflowHandoffSchema = z.object({
   id: z.string().uuid(),
+  caseId: z.string().uuid().nullable(),
   sourceRunId: z.string().uuid(),
   target: z.enum(["work-item", "meeting-actions", "status-update"]),
   status: z.enum(["draft", "converted"]),
@@ -158,27 +161,129 @@ export const createHandoffInputSchema = z.object({ target: z.enum(["work-item", 
 export const workItemStatusSchema = z.enum(["todo", "in-progress", "blocked", "done"]);
 export const workItemSchema = z.object({
   id: z.string().uuid(),
+  caseId: z.string().uuid().nullable(),
   title: z.string(),
   description: z.string(),
   kind: z.enum(["engineering", "verification", "investigation", "follow-up"]),
   status: workItemStatusSchema,
-  assignee_id: z.string(),
-  due_date: z.string().nullable(),
-  source_run_id: z.string().uuid().nullable(),
-  source_handoff_id: z.string().uuid().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  assigneeId: z.string().uuid().nullable(),
+  assigneeKey: z.string().nullable(),
+  assigneeName: z.string().nullable(),
+  dueDate: z.string().nullable(),
+  sourceRunId: z.string().uuid().nullable(),
+  sourceHandoffId: z.string().uuid().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export const workItemListSchema = z.object({ items: z.array(workItemSchema) });
 export const createWorkItemInputSchema = z.object({
   handoffId: z.string().uuid().nullable().optional(),
+  caseId: z.string().uuid().nullable().optional(),
   title: z.string().trim().min(3).max(200),
   description: z.string().trim().min(12).max(6000),
   kind: z.enum(["engineering", "verification", "investigation", "follow-up"]),
-  assigneeId: z.string().trim().max(64),
+  assigneeId: z.string().uuid().nullable().optional(),
   dueDate: z.string().date().nullable().optional(),
 });
-export const updateWorkItemInputSchema = z.object({ status: workItemStatusSchema });
+export const updateWorkItemInputSchema = z.object({
+  status: workItemStatusSchema.optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+  dueDate: z.string().date().nullable().optional(),
+}).refine((value) => Object.keys(value).length > 0, "Provide at least one work-item change.");
+
+export const workspaceMemberSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  name: z.string(),
+  email: z.string().email().nullable(),
+  initials: z.string(),
+  role: z.string(),
+  discipline: z.string(),
+  focus: z.string(),
+  availability: z.string(),
+  workflowFit: z.array(z.string()),
+  tone: z.enum(["indigo", "cyan", "amber", "neutral"]),
+  isSample: z.boolean(),
+  linkedAccount: z.boolean(),
+});
+export const workspaceMemberListSchema = z.object({ items: z.array(workspaceMemberSchema) });
+
+export const caseStatusSchema = z.enum([
+  "new", "triaging", "needs-information", "action-required", "in-progress", "monitoring", "resolved", "closed",
+]);
+export const caseDispositionSchema = z.enum([
+  "unclassified", "product-defect", "configuration-change", "process-guidance", "external-dependency", "duplicate", "needs-more-evidence",
+]);
+export const operationsCaseSummarySchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  status: caseStatusSchema,
+  disposition: caseDispositionSchema,
+  confidence: z.number().min(0).max(1).nullable(),
+  dueDate: z.string().nullable(),
+  assignee: workspaceMemberSchema.nullable(),
+  workItemCount: z.number().int().nonnegative(),
+  completedWorkItemCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const operationsCaseListSchema = z.object({
+  items: z.array(operationsCaseSummarySchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+export const caseEventSchema = z.object({
+  id: z.string().uuid(),
+  type: z.string(),
+  actorName: z.string(),
+  payload: z.record(jsonValueSchema),
+  createdAt: z.string(),
+});
+export const caseWorkItemSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  description: z.string(),
+  kind: z.enum(["engineering", "verification", "investigation", "follow-up"]),
+  status: workItemStatusSchema,
+  assignee: workspaceMemberSchema.nullable(),
+  dueDate: z.string().nullable(),
+  sourceRunId: z.string().uuid().nullable(),
+  sourceHandoffId: z.string().uuid().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export const operationsCaseDetailSchema = operationsCaseSummarySchema.extend({
+  description: z.string(),
+  resolutionSummary: z.string(),
+  resolvedAt: z.string().nullable(),
+  closedAt: z.string().nullable(),
+  workflowRuns: z.array(z.object({
+    id: z.string().uuid(), workflowId: z.enum(workflowIds), status: runStatusSchema,
+    executionPhase: z.string(), createdAt: z.string(), completedAt: z.string().nullable(),
+  })),
+  workItems: z.array(caseWorkItemSchema),
+  events: z.array(caseEventSchema),
+});
+export const createCaseInputSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  description: z.string().trim().min(12).max(6000),
+  summary: z.string().trim().max(3000).optional(),
+  disposition: caseDispositionSchema.optional(),
+  dueDate: z.string().date().nullable().optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+});
+export const updateCaseInputSchema = z.object({
+  status: caseStatusSchema.optional(),
+  disposition: caseDispositionSchema.optional(),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  dueDate: z.string().date().nullable().optional(),
+  resolutionSummary: z.string().trim().max(4000).optional(),
+}).refine((value) => Object.keys(value).length > 0, "Provide at least one case change.");
+export const updateCaseAssignmentInputSchema = z.object({ assigneeId: z.string().uuid().nullable() });
 
 export function parseApiResponse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);

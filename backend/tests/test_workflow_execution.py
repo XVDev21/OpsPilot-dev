@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from accounts.models import AppUser
 from ai.providers.registry import ResolvedProvider
 from ai.types import ProviderFailure, ProviderResult
+from cases.models import CaseEvent
+from cases.services import create_case
 from runs.models import WorkflowRun
 
 pytestmark = pytest.mark.django_db
@@ -124,6 +126,38 @@ def test_all_live_workflows_complete_and_persist(
     assert body["expires_at"] is not None
     run = WorkflowRun.objects.get(id=body["id"])
     assert run.result_json == body["result_json"]
+
+
+def test_workflow_run_can_be_linked_to_an_operations_case(
+    authenticated_client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    authenticated_client.get("/api/v1/me")
+    user = AppUser.objects.get(workos_user_id="user_test_primary")
+    case = create_case(
+        user=user,
+        title="Investigate a missing payroll field",
+        description="The Holiday field is not visible for a payroll consultant during setup.",
+        summary="Determine whether this is configuration or a product defect.",
+        disposition="unclassified",
+        due_date=None,
+        assignee_id=None,
+    )
+    monkeypatch.setattr(
+        "runs.services.get_provider",
+        lambda **kwargs: ResolvedProvider(adapter=StubProvider(), credential_source="platform"),
+    )
+
+    response = authenticated_client.post(
+        "/api/v1/workflows/bug-triage/runs",
+        data={"input": VALID_INPUTS["bug-triage"], "caseId": str(case.id)},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    assert response.json()["case_id"] == str(case.id)
+    assert WorkflowRun.objects.get(id=response.json()["id"]).case_id == case.id
+    assert CaseEvent.objects.filter(case=case, event_type="workflow-linked").exists()
 
 
 def test_unknown_workflow_and_bad_input_do_not_call_provider(

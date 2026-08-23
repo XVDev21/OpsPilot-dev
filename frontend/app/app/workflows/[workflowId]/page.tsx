@@ -9,7 +9,7 @@ import { WorkflowIcon } from "@/features/workflows/workflow-icon";
 
 interface WorkflowPageProps {
   params: Promise<{ workflowId: string }>;
-  searchParams: Promise<{ handoff?: string }>;
+  searchParams: Promise<{ handoff?: string; case?: string }>;
 }
 
 export function generateStaticParams() {
@@ -63,7 +63,11 @@ export default async function WorkflowPage({ params, searchParams }: WorkflowPag
         </div>
       </div>
 
-      <ManagedWorkflowRunner workflowId={workflowId} handoffId={query.handoff ?? null} />
+      <ManagedWorkflowRunner
+        workflowId={workflowId}
+        handoffId={query.handoff ?? null}
+        caseId={query.case ?? null}
+      />
     </div>
   );
 }

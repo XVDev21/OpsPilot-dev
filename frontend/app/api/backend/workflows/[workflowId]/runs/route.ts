@@ -66,6 +66,7 @@ export async function POST(request: Request, { params }: WorkflowRunRouteProps) 
       validatedInput.data,
       validatedRequest.data.options,
       validatedRequest.data.handoffId,
+      validatedRequest.data.caseId,
     );
     return Response.json(run, { status: run.status === "pending" ? 202 : 201 });
   } catch (error) {

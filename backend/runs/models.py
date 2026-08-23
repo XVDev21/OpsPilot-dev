@@ -28,6 +28,13 @@ class WorkflowRun(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name="workflow_runs")
+    case = models.ForeignKey(
+        "cases.OperationsCase",
+        on_delete=models.SET_NULL,
+        related_name="workflow_runs",
+        blank=True,
+        null=True,
+    )
     workflow_id = models.CharField(max_length=64)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     execution_phase = models.CharField(

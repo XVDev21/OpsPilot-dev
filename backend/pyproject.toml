@@ -7,6 +7,7 @@ addopts = [
   "--strict-markers",
   "--cov=accounts",
   "--cov=ai",
+  "--cov=cases",
   "--cov=common",
   "--cov=integrations",
   "--cov=runs",
@@ -39,7 +40,7 @@ extend-exclude = ["**/migrations/*.py"]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["accounts", "ai", "common", "config", "integrations", "runs", "workflows", "workitems"]
+known-first-party = ["accounts", "ai", "cases", "common", "config", "integrations", "runs", "workflows", "workitems"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/models.py" = ["RUF012"]
