@@ -265,6 +265,7 @@ export const updateWorkItemInputSchema = z
     status: workItemStatusSchema.optional(),
     assigneeId: z.string().uuid().nullable().optional(),
     dueDate: z.string().date().nullable().optional(),
+    blockerReason: z.string().trim().max(2000).nullable().optional(),
   })
   .refine(
     (value) => Object.keys(value).length > 0,
@@ -285,6 +286,7 @@ export const workspaceMemberSchema = z.object({
   tone: z.enum(["indigo", "cyan", "amber", "neutral"]),
   isSample: z.boolean(),
   linkedAccount: z.boolean(),
+  accessRole: z.enum(["owner", "operator", "contributor", "viewer"]),
 });
 export const workspaceMemberListSchema = z.object({
   items: z.array(workspaceMemberSchema),
@@ -296,6 +298,7 @@ export const caseStatusSchema = z.enum([
   "needs-information",
   "action-required",
   "in-progress",
+  "verification",
   "monitoring",
   "resolved",
   "closed",
@@ -358,6 +361,8 @@ export const caseWorkItemSchema = z.object({
   status: workItemStatusSchema,
   assignee: workspaceMemberSchema.nullable(),
   dueDate: z.string().nullable(),
+  blockerReason: z.string(),
+  completedAt: z.string().nullable(),
   sourceRunId: z.string().uuid().nullable(),
   sourceHandoffId: z.string().uuid().nullable(),
   createdAt: z.string(),
@@ -399,6 +404,33 @@ export const caseAssessmentSchema = z.object({
   appliedAt: z.string().nullable(),
   createdAt: z.string(),
 });
+export const caseUpdateAttachmentSchema = z.object({
+  id: z.string().uuid(),
+  originalFilename: z.string(),
+  mimeType: z.string(),
+  byteSize: z.number().int().nonnegative(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  downloadUrl: z.string(),
+});
+export const caseUpdateSchema = z.object({
+  id: z.string().uuid(),
+  type: z.enum([
+    "progress",
+    "blocker",
+    "decision",
+    "clarification",
+    "resolution",
+    "verification",
+  ]),
+  body: z.string(),
+  author: workspaceMemberSchema.nullable(),
+  taskId: z.string().uuid().nullable(),
+  externalLinks: z.array(z.record(jsonValueSchema)),
+  verificationResult: z.enum(["", "passed", "failed"]),
+  attachments: z.array(caseUpdateAttachmentSchema),
+  createdAt: z.string(),
+});
 export const operationsCaseDetailSchema = operationsCaseSummarySchema.extend({
   description: z.string(),
   affectedArea: z.string(),
@@ -407,6 +439,7 @@ export const operationsCaseDetailSchema = operationsCaseSummarySchema.extend({
   settingsContext: z.string(),
   constraints: z.string(),
   publishedAt: z.string().nullable(),
+  publishedAssessmentId: z.string().uuid().nullable(),
   resolutionSummary: z.string(),
   resolvedAt: z.string().nullable(),
   closedAt: z.string().nullable(),
@@ -423,6 +456,7 @@ export const operationsCaseDetailSchema = operationsCaseSummarySchema.extend({
   evidence: z.array(caseEvidenceSchema),
   assessments: z.array(caseAssessmentSchema),
   workItems: z.array(caseWorkItemSchema),
+  updates: z.array(caseUpdateSchema),
   events: z.array(caseEventSchema),
 });
 export const createCaseInputSchema = z.object({
@@ -458,6 +492,31 @@ export const updateCaseAssignmentInputSchema = z.object({
 });
 export const publishCaseInputSchema = z.object({
   assigneeId: z.string().uuid().nullable(),
+  assessmentId: z.string().uuid().nullable().optional(),
+  overrideAdvisory: z.boolean().optional(),
+});
+export const createCaseUpdateInputSchema = z.object({
+  clientRequestId: z.string().uuid(),
+  type: z.enum([
+    "progress",
+    "blocker",
+    "decision",
+    "clarification",
+    "resolution",
+    "verification",
+  ]),
+  body: z.string().trim().min(3).max(6000),
+  taskId: z.string().uuid().nullable().optional(),
+  externalLinks: z
+    .array(
+      z.object({
+        label: z.string().trim().min(2).max(80),
+        url: z.string().url().max(1000).refine((value) => /^https?:\/\//i.test(value), "Use an HTTP or HTTPS URL."),
+      }),
+    )
+    .max(8)
+    .optional(),
+  verificationResult: z.enum(["passed", "failed"]).optional(),
 });
 export const createTextEvidenceInputSchema = z.object({
   text: z.string().trim().min(3).max(3000),

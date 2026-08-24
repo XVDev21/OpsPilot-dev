@@ -24,7 +24,8 @@
         "workflowFit": ["Bug fixing", "Work updates"],
         "tone": "indigo",
         "isSample": true,
-        "linkedAccount": false
+        "linkedAccount": false,
+        "accessRole": "contributor"
       },
       "workItemCount": 0,
       "completedWorkItemCount": 0,

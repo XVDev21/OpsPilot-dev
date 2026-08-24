@@ -11,7 +11,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from accounts.models import AppUser
 from cases.models import CaseEvent, CaseEvidence, Workspace
-from cases.selectors import case_for_user
+from cases.selectors import case_for_user, require_case_manager
 from cases.services import record_case_event
 from common.errors import OpsPilotError
 
@@ -25,7 +25,12 @@ ALLOWED_IMAGE_FORMATS = {
 def evidence_for_user(*, user: AppUser, case_id: UUID, evidence_id: UUID) -> CaseEvidence:
     evidence = (
         CaseEvidence.objects.select_related("case__workspace")
-        .filter(id=evidence_id, case_id=case_id, case__workspace__owner=user)
+        .filter(
+            id=evidence_id,
+            case_id=case_id,
+            case__workspace__members__app_user=user,
+            case__workspace__members__is_active=True,
+        )
         .first()
     )
     if evidence is None:
@@ -40,6 +45,7 @@ def evidence_for_user(*, user: AppUser, case_id: UUID, evidence_id: UUID) -> Cas
 @transaction.atomic
 def add_text_evidence(*, user: AppUser, case_id: UUID, text: str) -> CaseEvidence:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     _lock_workspace(case.workspace_id)
     _enforce_evidence_item_limits(case_id=case.id, workspace_id=case.workspace_id)
     evidence = CaseEvidence.objects.create(
@@ -74,6 +80,7 @@ def add_image_evidence(
             status=503,
         )
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     _lock_workspace(case.workspace_id)
     _enforce_evidence_item_limits(case_id=case.id, workspace_id=case.workspace_id)
     if uploaded_file.size is None or uploaded_file.size <= 0:
@@ -130,6 +137,7 @@ def add_image_evidence(
 @transaction.atomic
 def remove_evidence(*, user: AppUser, case_id: UUID, evidence_id: UUID) -> None:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     evidence = evidence_for_user(user=user, case_id=case.id, evidence_id=evidence_id)
     payload = {
         "evidenceId": str(evidence.id),

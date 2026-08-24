@@ -7,7 +7,9 @@ from django.utils import timezone
 
 from accounts.models import AppUser
 from cases.models import (
+    CaseAssessment,
     CaseAssignment,
+    CaseDomainEvent,
     CaseEvent,
     CaseEvidence,
     OperationsCase,
@@ -15,7 +17,7 @@ from cases.models import (
     WorkspaceMember,
 )
 from cases.sample_team import SAMPLE_TEAM_MEMBERS
-from cases.selectors import case_for_user, member_for_user
+from cases.selectors import case_for_user, member_for_user, require_case_manager
 from common.errors import OpsPilotError
 
 ALLOWED_STATUS_TRANSITIONS = {
@@ -46,21 +48,31 @@ ALLOWED_STATUS_TRANSITIONS = {
     },
     OperationsCase.Status.IN_PROGRESS: {
         OperationsCase.Status.NEEDS_INFORMATION,
+        OperationsCase.Status.VERIFICATION,
         OperationsCase.Status.MONITORING,
         OperationsCase.Status.RESOLVED,
         OperationsCase.Status.CLOSED,
     },
     OperationsCase.Status.MONITORING: {
         OperationsCase.Status.IN_PROGRESS,
+        OperationsCase.Status.VERIFICATION,
         OperationsCase.Status.RESOLVED,
         OperationsCase.Status.CLOSED,
     },
     OperationsCase.Status.RESOLVED: {
         OperationsCase.Status.MONITORING,
+        OperationsCase.Status.VERIFICATION,
         OperationsCase.Status.TRIAGING,
         OperationsCase.Status.CLOSED,
     },
     OperationsCase.Status.CLOSED: {OperationsCase.Status.TRIAGING},
+    OperationsCase.Status.VERIFICATION: {
+        OperationsCase.Status.IN_PROGRESS,
+        OperationsCase.Status.NEEDS_INFORMATION,
+        OperationsCase.Status.MONITORING,
+        OperationsCase.Status.RESOLVED,
+        OperationsCase.Status.CLOSED,
+    },
 }
 
 
@@ -80,6 +92,7 @@ def _owner_member_defaults(user: AppUser) -> dict:
         "tone": WorkspaceMember.Tone.NEUTRAL,
         "is_sample": False,
         "is_active": True,
+        "access_role": WorkspaceMember.AccessRole.OWNER,
     }
 
 
@@ -95,11 +108,32 @@ def ensure_personal_workspace(user: AppUser) -> Workspace:
         defaults=_owner_member_defaults(user),
     )
     for member in SAMPLE_TEAM_MEMBERS:
-        WorkspaceMember.objects.update_or_create(
+        sample, created = WorkspaceMember.objects.get_or_create(
             workspace=workspace,
             key=member["key"],
-            defaults={**member, "app_user": None, "is_sample": True, "is_active": True},
+            defaults={
+                **member,
+                "app_user": None,
+                "is_sample": True,
+                "is_active": True,
+                "access_role": WorkspaceMember.AccessRole.CONTRIBUTOR,
+            },
         )
+        if not created and sample.app_user_id is None:
+            for field, value in member.items():
+                setattr(sample, field, value)
+            sample.is_sample = True
+            sample.is_active = True
+            sample.access_role = WorkspaceMember.AccessRole.CONTRIBUTOR
+            sample.save(
+                update_fields=[
+                    *member.keys(),
+                    "is_sample",
+                    "is_active",
+                    "access_role",
+                    "updated_at",
+                ]
+            )
     return workspace
 
 
@@ -111,6 +145,22 @@ def record_case_event(
     payload: dict | None = None,
 ) -> CaseEvent:
     return CaseEvent.objects.create(
+        case=case,
+        actor=actor,
+        event_type=event_type,
+        payload=payload or {},
+    )
+
+
+def record_domain_event(
+    *,
+    case: OperationsCase,
+    event_type: str,
+    actor: AppUser | None,
+    payload: dict | None = None,
+) -> CaseDomainEvent:
+    """Persist a notification-ready event without performing external delivery."""
+    return CaseDomainEvent.objects.create(
         case=case,
         actor=actor,
         event_type=event_type,
@@ -207,6 +257,7 @@ def update_case(
     publication_state: str | None = None,
 ) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     update_fields: list[str] = []
     now = timezone.now()
     if status is not None and status != case.status:
@@ -293,9 +344,10 @@ def assign_case(
     assignee_id: UUID | None,
 ) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
     if assignee is not None and case.publication_state != OperationsCase.PublicationState.PUBLISHED:
-        _publish_locked_case(case=case, user=user)
+        _publish_locked_case(case=case, user=user, override_advisory=True)
     assignment, _ = CaseAssignment.objects.select_for_update().get_or_create(case=case)
     previous = assignment.assignee
     if previous != assignee:
@@ -313,22 +365,60 @@ def assign_case(
                 "toMemberName": assignee.name if assignee else None,
             },
         )
+        record_domain_event(
+            case=case,
+            event_type="case.assignment.changed",
+            actor=user,
+            payload={
+                "fromMemberId": str(previous.id) if previous else None,
+                "toMemberId": str(assignee.id) if assignee else None,
+            },
+        )
         case.save(update_fields=["updated_at"])
     return case_for_user(user=user, case_id=case.id, detail=True)
 
 
-def _publish_locked_case(*, case: OperationsCase, user: AppUser) -> None:
+def _publish_locked_case(
+    *,
+    case: OperationsCase,
+    user: AppUser,
+    assessment: CaseAssessment | None = None,
+    override_advisory: bool = False,
+) -> None:
     if case.publication_state == OperationsCase.PublicationState.PUBLISHED:
         return
     case.publication_state = OperationsCase.PublicationState.PUBLISHED
     case.published_at = timezone.now()
     case.published_by = user
-    case.save(update_fields=["publication_state", "published_at", "published_by", "updated_at"])
+    case.published_assessment = assessment
+    case.save(
+        update_fields=[
+            "publication_state",
+            "published_at",
+            "published_by",
+            "published_assessment",
+            "updated_at",
+        ]
+    )
     record_case_event(
         case=case,
         event_type=CaseEvent.Type.PUBLISHED,
         actor=user,
-        payload={"publicationState": case.publication_state},
+        payload={
+            "publicationState": case.publication_state,
+            "assessmentId": str(assessment.id) if assessment else None,
+            "assessmentSequence": assessment.sequence if assessment else None,
+            "advisoryOverride": override_advisory,
+        },
+    )
+    record_domain_event(
+        case=case,
+        event_type="case.published",
+        actor=user,
+        payload={
+            "assessmentId": str(assessment.id) if assessment else None,
+            "advisoryOverride": override_advisory,
+        },
     )
 
 
@@ -338,9 +428,37 @@ def publish_case(
     user: AppUser,
     case_id: UUID,
     assignee_id: UUID | None = None,
+    assessment_id: UUID | None = None,
+    override_advisory: bool = False,
 ) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
-    _publish_locked_case(case=case, user=user)
+    require_case_manager(user=user, case=case)
+    assessment = None
+    if assessment_id is not None:
+        assessment = CaseAssessment.objects.filter(id=assessment_id, case=case).first()
+        if assessment is None or not assessment.is_applied:
+            raise OpsPilotError(
+                code="INVALID_PUBLICATION_ADVISORY",
+                message="Choose an advisory assessment that was reviewed and applied to this case.",
+                status=422,
+            )
+    elif case.intent == OperationsCase.Intent.ISSUE:
+        assessment = CaseAssessment.objects.filter(case=case, is_applied=True).first()
+    if case.intent == OperationsCase.Intent.ISSUE and assessment is None and not override_advisory:
+        raise OpsPilotError(
+            code="ADVISORY_REVIEW_REQUIRED",
+            message=(
+                "Review and apply an advisory assessment before publishing, "
+                "or explicitly publish without one."
+            ),
+            status=409,
+        )
+    _publish_locked_case(
+        case=case,
+        user=user,
+        assessment=assessment,
+        override_advisory=override_advisory,
+    )
     if assignee_id is not None:
         return assign_case(user=user, case_id=case.id, assignee_id=assignee_id)
     return case_for_user(user=user, case_id=case.id, detail=True)

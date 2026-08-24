@@ -22,7 +22,8 @@
     "workflowFit": ["Bug fixing", "Work updates"],
     "tone": "indigo",
     "isSample": true,
-    "linkedAccount": false
+    "linkedAccount": false,
+    "accessRole": "contributor"
   },
   "workItemCount": 0,
   "completedWorkItemCount": 0,
@@ -35,6 +36,7 @@
   "settingsContext": "Holiday field visibility has not yet been verified.",
   "constraints": "Do not change production settings without approval.",
   "publishedAt": "2026-08-23T08:02:00Z",
+  "publishedAssessmentId": "ecb2ab3d-687e-42d7-b55d-cb9327b29c16",
   "resolutionSummary": "",
   "resolvedAt": null,
   "closedAt": null,
@@ -92,6 +94,7 @@
     }
   ],
   "workItems": [],
+  "updates": [],
   "events": [
     {
       "id": "e5031286-cbd7-4be6-8a4f-2847f232e1f1",

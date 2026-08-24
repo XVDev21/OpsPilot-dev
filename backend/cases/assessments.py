@@ -9,7 +9,7 @@ from accounts.models import AppUser
 from ai.providers.registry import provider_definition_for
 from ai.types import AIImage, IntelligenceLevel, ProviderName
 from cases.models import CaseAssessment, CaseEvent, CaseEvidence, OperationsCase
-from cases.selectors import case_for_user
+from cases.selectors import case_for_user, require_case_manager
 from cases.services import record_case_event
 from common.errors import OpsPilotError
 from runs.models import WorkflowRun
@@ -178,6 +178,7 @@ def run_case_assessment(
     intelligence: IntelligenceLevel,
 ) -> WorkflowRun:
     case = case_for_user(user=user, case_id=case_id, detail=True)
+    require_case_manager(user=user, case=case)
     if case.intent == OperationsCase.Intent.ENHANCEMENT:
         raise OpsPilotError(
             code="CASE_INTENT_NOT_TRIAGEABLE",
@@ -287,6 +288,7 @@ def run_case_assessment(
 @transaction.atomic
 def apply_assessment(*, user: AppUser, case_id: UUID, assessment_id: UUID) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
+    require_case_manager(user=user, case=case)
     assessment = (
         CaseAssessment.objects.select_for_update().filter(id=assessment_id, case=case).first()
     )

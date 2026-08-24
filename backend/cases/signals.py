@@ -3,7 +3,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from accounts.models import AppUser
-from cases.models import CaseEvidence
+from cases.models import CaseEvidence, CaseUpdateAttachment
 from cases.services import ensure_personal_workspace
 
 
@@ -14,6 +14,18 @@ def provision_personal_workspace(sender, instance: AppUser, **kwargs) -> None:
 
 @receiver(post_delete, sender=CaseEvidence)
 def delete_case_evidence_file(sender, instance: CaseEvidence, **kwargs) -> None:
+    if instance.file:
+        storage = instance.file.storage
+        name = instance.file.name
+        transaction.on_commit(lambda: storage.delete(name))
+
+
+@receiver(post_delete, sender=CaseUpdateAttachment)
+def delete_case_update_attachment_file(
+    sender,
+    instance: CaseUpdateAttachment,
+    **kwargs,
+) -> None:
     if instance.file:
         storage = instance.file.storage
         name = instance.file.name

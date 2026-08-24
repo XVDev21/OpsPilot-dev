@@ -102,6 +102,8 @@ class WorkItem(models.Model):
         null=True,
     )
     due_date = models.DateField(blank=True, null=True)
+    blocker_reason = models.TextField(max_length=2000, blank=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -115,3 +117,12 @@ class WorkItem(models.Model):
                 name="work_items_case_status_idx",
             ),
         ]
+
+
+class CaseTask(WorkItem):
+    """Case-first product name for the preserved WorkItem storage and lineage."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "case task"
+        verbose_name_plural = "case tasks"

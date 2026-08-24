@@ -4,8 +4,10 @@ from django.test import Client
 from accounts.models import AppUser
 from cases.models import CaseEvent, WorkspaceMember
 from cases.services import create_case
+from common.errors import OpsPilotError
 from runs.models import WorkflowRun
 from workitems.models import WorkflowHandoff, WorkItem
+from workitems.services import create_work_item, update_work_item
 
 pytestmark = pytest.mark.django_db
 
@@ -181,3 +183,60 @@ def test_work_items_and_handoffs_are_user_scoped(authenticated_client: Client) -
         ).status_code
         == 404
     )
+
+
+def test_linked_assignee_can_update_task_state_but_not_reassign_it(
+    authenticated_client: Client,
+) -> None:
+    authenticated_client.get("/api/v1/me")
+    owner = AppUser.objects.get(workos_user_id="user_test_primary")
+    member = WorkspaceMember.objects.get(workspace__owner=owner, key="sample-mina-park")
+    contributor = AppUser.objects.create(
+        workos_user_id="user_linked_contributor",
+        email="contributor@example.com",
+        display_name="Linked Contributor",
+    )
+    case = create_case(
+        user=owner,
+        title="Linked contributor delivery",
+        description="A real linked workspace member owns the implementation task.",
+        assignee_id=member.id,
+    )
+    member.app_user = contributor
+    member.is_sample = False
+    member.access_role = WorkspaceMember.AccessRole.CONTRIBUTOR
+    member.save(update_fields=["app_user", "is_sample", "access_role"])
+    task = create_work_item(
+        user=owner,
+        handoff_id=None,
+        title="Verify payroll visibility",
+        description="Confirm the supported field is visible for the payroll consultant role.",
+        kind=WorkItem.Kind.VERIFICATION,
+        assignee_id=member.id,
+        case_id=case.id,
+        due_date=None,
+    )
+
+    updated = update_work_item(
+        user=contributor,
+        item_id=task.id,
+        status=WorkItem.Status.IN_PROGRESS,
+    )
+    assert updated.status == WorkItem.Status.IN_PROGRESS
+    with pytest.raises(OpsPilotError) as rejected:
+        update_work_item(
+            user=contributor,
+            item_id=task.id,
+            assignee_id=None,
+            assignee_supplied=True,
+        )
+    assert rejected.value.code == "CASE_TASK_MANAGER_REQUIRED"
+    member.app_user = None
+    member.save(update_fields=["app_user"])
+    with pytest.raises(OpsPilotError) as removed_member:
+        update_work_item(
+            user=contributor,
+            item_id=task.id,
+            status=WorkItem.Status.DONE,
+        )
+    assert removed_member.value.code == "NOT_FOUND"

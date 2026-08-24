@@ -18,6 +18,7 @@ def member_dict(member: WorkspaceMember | None) -> dict | None:
         "tone": member.tone,
         "isSample": member.is_sample,
         "linkedAccount": member.app_user_id is not None,
+        "accessRole": member.access_role,
     }
 
 
@@ -61,6 +62,8 @@ def work_item_dict(item) -> dict:
         "status": item.status,
         "assignee": member_dict(item.assignee),
         "dueDate": item.due_date,
+        "blockerReason": item.blocker_reason,
+        "completedAt": item.completed_at,
         "sourceRunId": item.source_run_id,
         "sourceHandoffId": item.source_handoff_id,
         "createdAt": item.created_at,
@@ -79,6 +82,7 @@ def case_detail_dict(case: OperationsCase) -> dict:
             "settingsContext": case.settings_context,
             "constraints": case.constraints,
             "publishedAt": case.published_at,
+            "publishedAssessmentId": case.published_assessment_id,
             "resolutionSummary": case.resolution_summary,
             "resolvedAt": case.resolved_at,
             "closedAt": case.closed_at,
@@ -96,6 +100,7 @@ def case_detail_dict(case: OperationsCase) -> dict:
             "evidence": [evidence_dict(item) for item in case.evidence.all()],
             "assessments": [assessment_dict(item) for item in case.assessments.all()],
             "workItems": [work_item_dict(item) for item in case.work_items.all()],
+            "updates": [case_update_dict(item) for item in case.updates.all()],
             "events": [
                 {
                     "id": event.id,
@@ -148,6 +153,33 @@ def assessment_dict(item) -> dict:
         "confidenceFactors": item.confidence_factors,
         "isApplied": item.is_applied,
         "appliedAt": item.applied_at,
+        "createdAt": item.created_at,
+    }
+
+
+def case_update_dict(item) -> dict:
+    return {
+        "id": item.id,
+        "type": item.update_type,
+        "body": item.body,
+        "author": member_dict(item.author_member),
+        "taskId": item.task_id,
+        "externalLinks": item.external_links,
+        "verificationResult": item.verification_result,
+        "attachments": [
+            {
+                "id": attachment.id,
+                "originalFilename": attachment.original_filename,
+                "mimeType": attachment.mime_type,
+                "byteSize": attachment.byte_size,
+                "width": attachment.width,
+                "height": attachment.height,
+                "downloadUrl": (
+                    f"/api/v1/cases/{item.case_id}/updates/attachments/{attachment.id}/content"
+                ),
+            }
+            for attachment in item.attachments.all()
+        ],
         "createdAt": item.created_at,
     }
 

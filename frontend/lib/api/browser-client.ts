@@ -16,11 +16,14 @@ import {
   operationsCaseListSchema,
   operationsCaseDetailSchema,
   caseEvidenceSchema,
+  caseUpdateSchema,
+  caseUpdateAttachmentSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
 import type {
   AIProvider,
   CreateCaseInput,
+  CreateCaseUpdateInput,
   IntelligenceLevel,
   ProviderCredentialInput,
   UpdateCaseInput,
@@ -296,15 +299,42 @@ export const browserApi = {
       ),
     );
   },
-  async publishCase(caseId: string, assigneeId: string | null) {
+  async publishCase(
+    caseId: string,
+    input: {
+      assigneeId: string | null;
+      assessmentId?: string | null;
+      overrideAdvisory?: boolean;
+    },
+  ) {
     return parseApiResponse(
       operationsCaseDetailSchema,
       await request<unknown>(
         `/api/backend/cases/${encodeURIComponent(caseId)}/publish`,
         {
           method: "POST",
-          body: JSON.stringify({ assigneeId }),
+          body: JSON.stringify(input),
         },
+      ),
+    );
+  },
+  async createCaseUpdate(caseId: string, input: CreateCaseUpdateInput) {
+    return parseApiResponse(
+      caseUpdateSchema,
+      await request<unknown>(
+        `/api/backend/cases/${encodeURIComponent(caseId)}/updates`,
+        { method: "POST", body: JSON.stringify(input) },
+      ),
+    );
+  },
+  async uploadCaseUpdateImage(caseId: string, updateId: string, file: File) {
+    const formData = new FormData();
+    formData.set("file", file);
+    return parseApiResponse(
+      caseUpdateAttachmentSchema,
+      await request<unknown>(
+        `/api/backend/cases/${encodeURIComponent(caseId)}/updates/${encodeURIComponent(updateId)}/images`,
+        { method: "POST", body: formData },
       ),
     );
   },

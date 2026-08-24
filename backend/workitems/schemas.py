@@ -33,6 +33,8 @@ class WorkItemSchema(Schema):
     assigneeKey: str | None
     assigneeName: str | None
     dueDate: date | None
+    blockerReason: str
+    completedAt: datetime | None
     sourceRunId: UUID | None
     sourceHandoffId: UUID | None
     createdAt: datetime
@@ -55,6 +57,10 @@ class UpdateWorkItemInput(Schema):
     status: Literal["todo", "in-progress", "blocked", "done"] | None = None
     assigneeId: UUID | None = None
     dueDate: date | None = None
+    blockerReason: Annotated[
+        str | None,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+    ] = None
 
     @model_validator(mode="after")
     def require_change(self):

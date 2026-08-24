@@ -11,6 +11,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   "needs-information": "Needs information",
   "action-required": "Action required",
   "in-progress": "In progress",
+  verification: "Verification",
   monitoring: "Monitoring",
   resolved: "Resolved",
   closed: "Closed",
@@ -46,9 +47,10 @@ export const allowedCaseTransitions: Record<CaseStatus, CaseStatus[]> = {
   triaging: ["needs-information", "action-required", "in-progress", "resolved", "closed"],
   "needs-information": ["triaging", "action-required", "closed"],
   "action-required": ["needs-information", "in-progress", "resolved", "closed"],
-  "in-progress": ["needs-information", "monitoring", "resolved", "closed"],
-  monitoring: ["in-progress", "resolved", "closed"],
-  resolved: ["monitoring", "triaging", "closed"],
+  "in-progress": ["needs-information", "verification", "monitoring", "resolved", "closed"],
+  verification: ["in-progress", "needs-information", "monitoring", "resolved", "closed"],
+  monitoring: ["in-progress", "verification", "resolved", "closed"],
+  resolved: ["monitoring", "verification", "triaging", "closed"],
   closed: ["triaging"],
 };
 
