@@ -15,7 +15,6 @@ import {
   RadioTower,
   Settings,
   UsersRound,
-  Workflow,
   BriefcaseBusiness,
   FolderKanban,
 } from "lucide-react";
@@ -32,7 +31,6 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/app", label: "Overview", icon: LayoutGrid, exact: true },
-  { href: "/app/workflows", label: "Workflows", icon: Workflow, exact: false },
   { href: "/app/cases", label: "Cases", icon: FolderKanban, exact: false },
   { href: "/app/work-items", label: "Work items", icon: BriefcaseBusiness, exact: false },
   { href: "/app/team", label: "Team", icon: UsersRound, exact: false },
@@ -201,7 +199,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: AppUse
             <Sheet
               side="left"
               title="OpsPilot workspace"
-              description="Choose a workflow, review history, or update your settings."
+              description="Review cases, delivery history, team records, or settings."
               trigger={
                 <Button variant="secondary" size="icon" aria-label="Open app navigation">
                   <Menu aria-hidden="true" className="size-5" />

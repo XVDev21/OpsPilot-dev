@@ -55,9 +55,14 @@ WORKFLOW_REGISTRY: dict[WorkflowId, WorkflowDefinition] = {
             "configuration-or-process, or needs-more-evidence. Route product defects to "
             "engineering, configuration or settings issues to support, and unclear reports to "
             "operations. Separate "
-            "confirmed facts from gaps, make checks specific and safe, and only echo a supplied "
+            "confirmed facts from contradicting evidence and gaps. When the evidence supports "
+            "a configuration or process resolution, provide a bounded recommendedResolution and "
+            "step-by-step verificationSteps. Never invent a setting path: if the supplied evidence "
+            "does not establish the path, state the gap. Make checks specific and safe, and only "
+            "echo a supplied "
             "triageOwnerId; never invent a collaborator identifier."
         ),
+        prompt_version="v4-case-assessment",
     ),
     "meeting-actions": WorkflowDefinition(
         id="meeting-actions",

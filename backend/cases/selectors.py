@@ -42,6 +42,8 @@ def case_for_user(
     if detail:
         queryset = queryset.prefetch_related(
             "events__actor",
+            "evidence",
+            "assessments",
             Prefetch(
                 "workflow_runs",
                 queryset=WorkflowRun.objects.filter(

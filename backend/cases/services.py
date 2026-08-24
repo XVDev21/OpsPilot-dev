@@ -6,7 +6,14 @@ from django.db.models import Max
 from django.utils import timezone
 
 from accounts.models import AppUser
-from cases.models import CaseAssignment, CaseEvent, OperationsCase, Workspace, WorkspaceMember
+from cases.models import (
+    CaseAssignment,
+    CaseEvent,
+    CaseEvidence,
+    OperationsCase,
+    Workspace,
+    WorkspaceMember,
+)
 from cases.sample_team import SAMPLE_TEAM_MEMBERS
 from cases.selectors import case_for_user, member_for_user
 from common.errors import OpsPilotError
@@ -117,10 +124,17 @@ def create_case(
     user: AppUser,
     title: str,
     description: str,
-    summary: str,
-    disposition: str,
-    due_date: date | None,
-    assignee_id: UUID | None,
+    intent: str = OperationsCase.Intent.ISSUE,
+    affected_area: str = "",
+    expected_outcome: str = "",
+    environment_context: str = "",
+    settings_context: str = "",
+    constraints: str = "",
+    evidence_notes: list[str] | None = None,
+    summary: str = "",
+    disposition: str = OperationsCase.Disposition.UNCLASSIFIED,
+    due_date: date | None = None,
+    assignee_id: UUID | None = None,
 ) -> OperationsCase:
     workspace = ensure_personal_workspace(user)
     locked_workspace = Workspace.objects.select_for_update().get(pk=workspace.pk)
@@ -135,6 +149,13 @@ def create_case(
         number=current_number + 1,
         title=title,
         description=description,
+        intent=intent,
+        publication_state=OperationsCase.PublicationState.DRAFT,
+        affected_area=affected_area,
+        expected_outcome=expected_outcome,
+        environment_context=environment_context,
+        settings_context=settings_context,
+        constraints=constraints,
         summary=summary,
         status=OperationsCase.Status.NEW,
         disposition=disposition,
@@ -145,8 +166,27 @@ def create_case(
         case=case,
         event_type=CaseEvent.Type.CREATED,
         actor=user,
-        payload={"status": case.status, "disposition": case.disposition},
+        payload={
+            "status": case.status,
+            "disposition": case.disposition,
+            "intent": case.intent,
+            "publicationState": case.publication_state,
+        },
     )
+    for index, note in enumerate(evidence_notes or []):
+        evidence = CaseEvidence.objects.create(
+            case=case,
+            created_by=user,
+            kind=CaseEvidence.Kind.TEXT,
+            text=note,
+            sort_order=index,
+        )
+        record_case_event(
+            case=case,
+            event_type=CaseEvent.Type.EVIDENCE_ADDED,
+            actor=user,
+            payload={"evidenceId": str(evidence.id), "kind": evidence.kind},
+        )
     if assignee_id is not None:
         assign_case(user=user, case_id=case.id, assignee_id=assignee_id)
     return case_for_user(user=user, case_id=case.id, detail=True)
@@ -164,6 +204,7 @@ def update_case(
     due_date: date | None = None,
     due_date_supplied: bool = False,
     resolution_summary: str | None = None,
+    publication_state: str | None = None,
 ) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
     update_fields: list[str] = []
@@ -221,6 +262,24 @@ def update_case(
             actor=user,
             payload={"recorded": bool(resolution_summary)},
         )
+    if publication_state is not None and publication_state != case.publication_state:
+        if publication_state == OperationsCase.PublicationState.DRAFT:
+            if case.publication_state != OperationsCase.PublicationState.ARCHIVED:
+                raise OpsPilotError(
+                    code="INVALID_PUBLICATION_TRANSITION",
+                    message="Only an archived case can return to draft.",
+                    status=409,
+                )
+            case.publication_state = OperationsCase.PublicationState.DRAFT
+            update_fields.append("publication_state")
+        elif publication_state == OperationsCase.PublicationState.ARCHIVED:
+            case.publication_state = OperationsCase.PublicationState.ARCHIVED
+            update_fields.append("publication_state")
+            record_case_event(
+                case=case,
+                event_type=CaseEvent.Type.ARCHIVED,
+                actor=user,
+            )
     if update_fields:
         case.save(update_fields=[*dict.fromkeys(update_fields), "updated_at"])
     return case_for_user(user=user, case_id=case.id, detail=True)
@@ -235,6 +294,8 @@ def assign_case(
 ) -> OperationsCase:
     case = case_for_user(user=user, case_id=case_id, for_update=True)
     assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
+    if assignee is not None and case.publication_state != OperationsCase.PublicationState.PUBLISHED:
+        _publish_locked_case(case=case, user=user)
     assignment, _ = CaseAssignment.objects.select_for_update().get_or_create(case=case)
     previous = assignment.assignee
     if previous != assignee:
@@ -253,6 +314,35 @@ def assign_case(
             },
         )
         case.save(update_fields=["updated_at"])
+    return case_for_user(user=user, case_id=case.id, detail=True)
+
+
+def _publish_locked_case(*, case: OperationsCase, user: AppUser) -> None:
+    if case.publication_state == OperationsCase.PublicationState.PUBLISHED:
+        return
+    case.publication_state = OperationsCase.PublicationState.PUBLISHED
+    case.published_at = timezone.now()
+    case.published_by = user
+    case.save(update_fields=["publication_state", "published_at", "published_by", "updated_at"])
+    record_case_event(
+        case=case,
+        event_type=CaseEvent.Type.PUBLISHED,
+        actor=user,
+        payload={"publicationState": case.publication_state},
+    )
+
+
+@transaction.atomic
+def publish_case(
+    *,
+    user: AppUser,
+    case_id: UUID,
+    assignee_id: UUID | None = None,
+) -> OperationsCase:
+    case = case_for_user(user=user, case_id=case_id, for_update=True)
+    _publish_locked_case(case=case, user=user)
+    if assignee_id is not None:
+        return assign_case(user=user, case_id=case.id, assignee_id=assignee_id)
     return case_for_user(user=user, case_id=case.id, detail=True)
 
 

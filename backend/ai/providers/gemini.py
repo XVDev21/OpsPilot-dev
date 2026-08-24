@@ -3,7 +3,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel, ValidationError
 
-from ai.types import ProviderFailure, ProviderResult
+from ai.types import AIImage, ProviderFailure, ProviderResult
 
 
 class GeminiProvider:
@@ -21,11 +21,18 @@ class GeminiProvider:
         user_content: str,
         output_schema: type[BaseModel],
         max_output_tokens: int,
+        images: tuple[AIImage, ...] = (),
     ) -> ProviderResult:
         try:
             response = self.client.models.generate_content(
                 model=model,
-                contents=user_content,
+                contents=[
+                    user_content,
+                    *[
+                        types.Part.from_bytes(data=image.data, mime_type=image.mime_type)
+                        for image in images
+                    ],
+                ],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),

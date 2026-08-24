@@ -21,6 +21,10 @@ custom compatible endpoints are personal connections only. The API
 derives the WorkOS JWKS URL from the client ID and does not need a WorkOS API key to validate access
 tokens.
 
+Case screenshots use local `backend/media` storage during development. Before relying on images in
+production, configure the private S3-compatible `CASE_EVIDENCE_S3_*` variables documented in
+`../docs/14_CASE_FIRST_ASSESSMENTS_AND_EVIDENCE.md`; Render Free's filesystem is not durable.
+
 ## Quality gates
 
 ```powershell
@@ -44,11 +48,13 @@ tokens.
   returned by the API, and scoped to their authenticated owner.
 - Qwen base URLs are constructed from an approved region and workspace ID; users cannot provide an
   arbitrary endpoint or model ID.
-- Browser runs select only `fast`, `balanced`, or `high`; exact models come from server policy or a
+- Case assessments select only `fast`, `balanced`, or `high`; exact models come from server policy or a
   previously reviewed connection mapping, never a per-run model override.
 - Local connector jobs are durable in PostgreSQL and schema-validated before completion; this
   personal preview does not require Redis or a separate worker.
 - Trial workflow input and result history expires after 30 days by default.
+- Case evidence and applied case history are durable account data and follow account deletion, not
+  the 30-day workflow-run retention window.
 
 ## Retention
 

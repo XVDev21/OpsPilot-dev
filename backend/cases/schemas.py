@@ -24,6 +24,8 @@ CaseDisposition = Literal[
     "duplicate",
     "needs-more-evidence",
 ]
+CaseIntent = Literal["issue", "clarification", "enhancement"]
+CasePublicationState = Literal["draft", "published", "archived"]
 
 
 class WorkspaceMemberSchema(Schema):
@@ -51,6 +53,8 @@ class CaseSummarySchema(Schema):
     key: str
     title: str
     summary: str
+    intent: CaseIntent
+    publicationState: CasePublicationState
     status: CaseStatus
     disposition: CaseDisposition
     confidence: float | None
@@ -75,6 +79,8 @@ class CaseListQuery(Schema):
     pageSize: int = Field(default=20, ge=1, le=50)
     status: CaseStatus | None = None
     disposition: CaseDisposition | None = None
+    intent: CaseIntent | None = None
+    publicationState: CasePublicationState | None = None
     assigneeId: UUID | None = None
     search: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""
 
@@ -85,6 +91,24 @@ class CreateCaseInput(Schema):
         str,
         StringConstraints(strip_whitespace=True, min_length=12, max_length=6000),
     ]
+    intent: CaseIntent = "issue"
+    affectedArea: Annotated[str, StringConstraints(strip_whitespace=True, max_length=160)] = ""
+    expectedOutcome: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, max_length=3000),
+    ] = ""
+    environmentContext: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+    ] = ""
+    settingsContext: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+    ] = ""
+    constraints: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] = ""
+    evidenceNotes: list[
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=3000)]
+    ] = Field(default_factory=list, max_length=12)
     summary: Annotated[str, StringConstraints(strip_whitespace=True, max_length=3000)] = ""
     disposition: CaseDisposition = "unclassified"
     dueDate: date | None = None
@@ -100,6 +124,7 @@ class UpdateCaseInput(Schema):
         str | None,
         StringConstraints(strip_whitespace=True, max_length=4000),
     ] = None
+    publicationState: Literal["draft", "archived"] | None = None
 
     @model_validator(mode="after")
     def require_change(self):
@@ -112,11 +137,66 @@ class UpdateCaseAssignmentInput(Schema):
     assigneeId: UUID | None
 
 
+class PublishCaseInput(Schema):
+    assigneeId: UUID | None = None
+
+
 class CaseEventSchema(Schema):
     id: UUID
     type: str
     actorName: str
     payload: dict
+    createdAt: datetime
+
+
+class CaseEvidenceSchema(Schema):
+    id: UUID
+    kind: Literal["text", "image"]
+    text: str
+    caption: str
+    originalFilename: str
+    mimeType: str
+    byteSize: int | None
+    width: int | None
+    height: int | None
+    downloadUrl: str | None
+    createdAt: datetime
+
+
+class CreateTextEvidenceInput(Schema):
+    text: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=3, max_length=3000),
+    ]
+
+
+class CreateAssessmentInput(Schema):
+    provider: Literal["gemini", "openai", "qwen", "bedrock", "custom", "local"]
+    intelligence: Literal["fast", "balanced", "high"]
+
+
+class ConfidenceFactorSchema(Schema):
+    name: str
+    score: float
+    rationale: str
+
+
+class CaseAssessmentSchema(Schema):
+    id: UUID
+    sequence: int
+    sourceRunId: UUID | None
+    provider: str
+    model: str
+    intelligence: str
+    promptVersion: str
+    result: dict
+    proposedDisposition: CaseDisposition
+    modelConfidence: float
+    decisionConfidence: float
+    confidenceBand: Literal["low", "medium", "high"]
+    confidenceFactors: list[ConfidenceFactorSchema]
+    isApplied: bool
+    appliedAt: datetime | None
     createdAt: datetime
 
 
@@ -145,9 +225,17 @@ class CaseWorkItemSchema(Schema):
 
 class CaseDetailSchema(CaseSummarySchema):
     description: str
+    affectedArea: str
+    expectedOutcome: str
+    environmentContext: str
+    settingsContext: str
+    constraints: str
+    publishedAt: datetime | None
     resolutionSummary: str
     resolvedAt: datetime | None
     closedAt: datetime | None
     workflowRuns: list[CaseWorkflowRunSchema]
+    evidence: list[CaseEvidenceSchema]
+    assessments: list[CaseAssessmentSchema]
     workItems: list[CaseWorkItemSchema]
     events: list[CaseEventSchema]

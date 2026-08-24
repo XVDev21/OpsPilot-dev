@@ -17,6 +17,7 @@ import {
   workspaceMemberListSchema,
   operationsCaseListSchema,
   operationsCaseDetailSchema,
+  caseEvidenceSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
 import type {
@@ -38,11 +39,14 @@ interface RequestOptions extends Omit<RequestInit, "headers"> {
 function getApiBaseUrl() {
   const value = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
   if (!value) {
-    throw new ApiError({
-      code: "BACKEND_UNAVAILABLE",
-      message: "The live API has not been configured for this environment.",
-      retryable: false,
-    }, 503);
+    throw new ApiError(
+      {
+        code: "BACKEND_UNAVAILABLE",
+        message: "The live API has not been configured for this environment.",
+        retryable: false,
+      },
+      503,
+    );
   }
   return value;
 }
@@ -54,12 +58,19 @@ async function parseError(response: Response): Promise<ApiError> {
   } catch {
     payload = null;
   }
-  const requestId = payload?.error?.requestId ?? response.headers.get("x-request-id");
-  const retryableStatus = response.status === 408 || response.status === 429 || response.status >= 500;
+  const requestId =
+    payload?.error?.requestId ?? response.headers.get("x-request-id");
+  const retryableStatus =
+    response.status === 408 ||
+    response.status === 429 ||
+    response.status >= 500;
   return new ApiError(
     {
-      code: payload?.error?.code ?? (response.status === 401 ? "INVALID_TOKEN" : "API_REQUEST_FAILED"),
-      message: payload?.error?.message ??
+      code:
+        payload?.error?.code ??
+        (response.status === 401 ? "INVALID_TOKEN" : "API_REQUEST_FAILED"),
+      message:
+        payload?.error?.message ??
         (response.status === 401
           ? "Your session could not be authorized for the live API."
           : "The live API returned an unexpected response."),
@@ -77,7 +88,9 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   headers.set("Authorization", `Bearer ${options.accessToken}`);
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
 
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/v1${path}`, {
@@ -92,28 +105,53 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError({
-        code: "API_TIMEOUT",
-        message: "The live API took too long to respond.",
-        retryable: true,
-      }, 504);
+      throw new ApiError(
+        {
+          code: "API_TIMEOUT",
+          message: "The live API took too long to respond.",
+          retryable: true,
+        },
+        504,
+      );
     }
-    throw new ApiError({
-      code: "BACKEND_UNAVAILABLE",
-      message: "The live API is unavailable. Your input is still here, and Demo Mode remains available.",
-      retryable: true,
-    }, 503);
+    throw new ApiError(
+      {
+        code: "BACKEND_UNAVAILABLE",
+        message:
+          "The live API is unavailable. Your input is still here, and Demo Mode remains available.",
+        retryable: true,
+      },
+      503,
+    );
   } finally {
     clearTimeout(timeout);
   }
 }
 
+async function requestFile(
+  path: string,
+  accessToken: string,
+): Promise<Response> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1${path}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!response.ok) throw await parseError(response);
+  return response;
+}
+
 export const djangoApi = {
   async currentUser(accessToken: string) {
-    return parseApiResponse(backendUserSchema, await request<unknown>("/me", { accessToken }));
+    return parseApiResponse(
+      backendUserSchema,
+      await request<unknown>("/me", { accessToken }),
+    );
   },
   async listRuns(accessToken: string) {
-    return parseApiResponse(backendRunListSchema, await request<unknown>("/runs", { accessToken }));
+    return parseApiResponse(
+      backendRunListSchema,
+      await request<unknown>("/runs", { accessToken }),
+    );
   },
   async executionOptions(accessToken: string) {
     return parseApiResponse(
@@ -150,7 +188,9 @@ export const djangoApi = {
   async getRun(accessToken: string, runId: string) {
     return parseApiResponse(
       workflowRunSchema,
-      await request<unknown>(`/runs/${encodeURIComponent(runId)}`, { accessToken }),
+      await request<unknown>(`/runs/${encodeURIComponent(runId)}`, {
+        accessToken,
+      }),
     );
   },
   async createRun(
@@ -189,7 +229,12 @@ export const djangoApi = {
   },
   async createLocalConnectorPairing(
     accessToken: string,
-    input: { name: string; modelFast: string; modelBalanced: string; modelHigh: string },
+    input: {
+      name: string;
+      modelFast: string;
+      modelBalanced: string;
+      modelHigh: string;
+    },
   ) {
     return parseApiResponse(
       localConnectorPairingSchema,
@@ -201,10 +246,13 @@ export const djangoApi = {
     );
   },
   deleteLocalConnector(accessToken: string, connectorId: string) {
-    return request<void>(`/local-connector/${encodeURIComponent(connectorId)}`, {
-      accessToken,
-      method: "DELETE",
-    });
+    return request<void>(
+      `/local-connector/${encodeURIComponent(connectorId)}`,
+      {
+        accessToken,
+        method: "DELETE",
+      },
+    );
   },
   async createHandoff(
     accessToken: string,
@@ -223,7 +271,9 @@ export const djangoApi = {
   async getHandoff(accessToken: string, handoffId: string) {
     return parseApiResponse(
       workflowHandoffSchema,
-      await request<unknown>(`/handoffs/${encodeURIComponent(handoffId)}`, { accessToken }),
+      await request<unknown>(`/handoffs/${encodeURIComponent(handoffId)}`, {
+        accessToken,
+      }),
     );
   },
   async listWorkItems(accessToken: string, search = "") {
@@ -235,10 +285,18 @@ export const djangoApi = {
   async createWorkItem(accessToken: string, input: unknown) {
     return parseApiResponse(
       workItemSchema,
-      await request<unknown>("/work-items", { accessToken, method: "POST", body: JSON.stringify(input) }),
+      await request<unknown>("/work-items", {
+        accessToken,
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     );
   },
-  async updateWorkItem(accessToken: string, itemId: string, input: WorkItemUpdate) {
+  async updateWorkItem(
+    accessToken: string,
+    itemId: string,
+    input: WorkItemUpdate,
+  ) {
     return parseApiResponse(
       workItemSchema,
       await request<unknown>(`/work-items/${encodeURIComponent(itemId)}`, {
@@ -273,10 +331,16 @@ export const djangoApi = {
   async getCase(accessToken: string, caseId: string) {
     return parseApiResponse(
       operationsCaseDetailSchema,
-      await request<unknown>(`/cases/${encodeURIComponent(caseId)}`, { accessToken }),
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}`, {
+        accessToken,
+      }),
     );
   },
-  async updateCase(accessToken: string, caseId: string, input: UpdateCaseInput) {
+  async updateCase(
+    accessToken: string,
+    caseId: string,
+    input: UpdateCaseInput,
+  ) {
     return parseApiResponse(
       operationsCaseDetailSchema,
       await request<unknown>(`/cases/${encodeURIComponent(caseId)}`, {
@@ -286,14 +350,108 @@ export const djangoApi = {
       }),
     );
   },
-  async assignCase(accessToken: string, caseId: string, assigneeId: string | null) {
+  async assignCase(
+    accessToken: string,
+    caseId: string,
+    assigneeId: string | null,
+  ) {
     return parseApiResponse(
       operationsCaseDetailSchema,
-      await request<unknown>(`/cases/${encodeURIComponent(caseId)}/assignment`, {
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/assignment`,
+        {
+          accessToken,
+          method: "PUT",
+          body: JSON.stringify({ assigneeId }),
+        },
+      ),
+    );
+  },
+  async publishCase(
+    accessToken: string,
+    caseId: string,
+    assigneeId: string | null,
+  ) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}/publish`, {
         accessToken,
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify({ assigneeId }),
       }),
+    );
+  },
+  async addTextEvidence(accessToken: string, caseId: string, text: string) {
+    return parseApiResponse(
+      caseEvidenceSchema,
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/evidence/text`,
+        {
+          accessToken,
+          method: "POST",
+          body: JSON.stringify({ text }),
+        },
+      ),
+    );
+  },
+  async uploadImageEvidence(
+    accessToken: string,
+    caseId: string,
+    formData: FormData,
+    caption: string,
+  ) {
+    return parseApiResponse(
+      caseEvidenceSchema,
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/evidence/images?caption=${encodeURIComponent(caption)}`,
+        {
+          accessToken,
+          method: "POST",
+          body: formData,
+        },
+      ),
+    );
+  },
+  deleteEvidence(accessToken: string, caseId: string, evidenceId: string) {
+    return request<void>(
+      `/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}`,
+      { accessToken, method: "DELETE" },
+    );
+  },
+  evidenceContent(accessToken: string, caseId: string, evidenceId: string) {
+    return requestFile(
+      `/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}/content`,
+      accessToken,
+    );
+  },
+  async createCaseAssessment(
+    accessToken: string,
+    caseId: string,
+    options: { provider: AIProvider; intelligence: IntelligenceLevel },
+  ) {
+    return parseApiResponse(
+      workflowRunSchema,
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/assessments`,
+        {
+          accessToken,
+          method: "POST",
+          body: JSON.stringify(options),
+        },
+      ),
+    );
+  },
+  async applyCaseAssessment(
+    accessToken: string,
+    caseId: string,
+    assessmentId: string,
+  ) {
+    return parseApiResponse(
+      operationsCaseDetailSchema,
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/assessments/${encodeURIComponent(assessmentId)}/apply`,
+        { accessToken, method: "POST" },
+      ),
     );
   },
 };

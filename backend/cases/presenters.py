@@ -38,6 +38,8 @@ def case_summary_dict(case: OperationsCase) -> dict:
         "key": case.key,
         "title": case.title,
         "summary": case.summary,
+        "intent": case.intent,
+        "publicationState": case.publication_state,
         "status": case.status,
         "disposition": case.disposition,
         "confidence": case.confidence,
@@ -71,6 +73,12 @@ def case_detail_dict(case: OperationsCase) -> dict:
     data.update(
         {
             "description": case.description,
+            "affectedArea": case.affected_area,
+            "expectedOutcome": case.expected_outcome,
+            "environmentContext": case.environment_context,
+            "settingsContext": case.settings_context,
+            "constraints": case.constraints,
+            "publishedAt": case.published_at,
             "resolutionSummary": case.resolution_summary,
             "resolvedAt": case.resolved_at,
             "closedAt": case.closed_at,
@@ -85,6 +93,8 @@ def case_detail_dict(case: OperationsCase) -> dict:
                 }
                 for run in case.visible_workflow_runs
             ],
+            "evidence": [evidence_dict(item) for item in case.evidence.all()],
+            "assessments": [assessment_dict(item) for item in case.assessments.all()],
             "workItems": [work_item_dict(item) for item in case.work_items.all()],
             "events": [
                 {
@@ -99,6 +109,47 @@ def case_detail_dict(case: OperationsCase) -> dict:
         }
     )
     return data
+
+
+def evidence_dict(item) -> dict:
+    return {
+        "id": item.id,
+        "kind": item.kind,
+        "text": item.text,
+        "caption": item.caption,
+        "originalFilename": item.original_filename,
+        "mimeType": item.mime_type,
+        "byteSize": item.byte_size,
+        "width": item.width,
+        "height": item.height,
+        "downloadUrl": (
+            f"/api/v1/cases/{item.case_id}/evidence/{item.id}/content"
+            if item.kind == "image"
+            else None
+        ),
+        "createdAt": item.created_at,
+    }
+
+
+def assessment_dict(item) -> dict:
+    return {
+        "id": item.id,
+        "sequence": item.sequence,
+        "sourceRunId": item.source_run_id,
+        "provider": item.provider,
+        "model": item.model,
+        "intelligence": item.intelligence,
+        "promptVersion": item.prompt_version,
+        "result": item.result_json,
+        "proposedDisposition": item.proposed_disposition,
+        "modelConfidence": item.model_confidence,
+        "decisionConfidence": item.decision_confidence,
+        "confidenceBand": item.confidence_band,
+        "confidenceFactors": item.confidence_factors,
+        "isApplied": item.is_applied,
+        "appliedAt": item.applied_at,
+        "createdAt": item.created_at,
+    }
 
 
 def _event_actor_name(event) -> str:

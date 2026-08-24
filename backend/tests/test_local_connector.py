@@ -5,6 +5,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
+from cases.models import CaseAssessment
 from integrations.models import LocalConnector
 from runs.models import LocalConnectorJob, WorkflowRun
 from tests.test_workflow_execution import VALID_INPUTS, VALID_OUTPUTS
@@ -103,6 +104,56 @@ def test_local_run_is_queued_claimed_and_completed(authenticated_client: Client)
     assert complete.json()["status"] == "completed"
     assert complete.json()["execution_phase"] == "completed"
     assert LocalConnectorJob.objects.get().status == LocalConnectorJob.Status.COMPLETED
+
+
+def test_local_case_assessment_keeps_its_reserved_evidence_snapshot(
+    authenticated_client: Client,
+) -> None:
+    connector_id, token = _pair(authenticated_client)
+    case = authenticated_client.post(
+        "/api/v1/cases",
+        data={
+            "title": "Holiday field is missing",
+            "description": "The payroll consultant cannot see the Holiday field.",
+            "expectedOutcome": "The Holiday field should be visible.",
+            "evidenceNotes": ["Original evidence available before the run."],
+        },
+        content_type="application/json",
+    ).json()
+    run_response = authenticated_client.post(
+        f"/api/v1/cases/{case['id']}/assessments",
+        data={"provider": "local", "intelligence": "fast"},
+        content_type="application/json",
+    )
+    assert run_response.status_code == 202
+    run = WorkflowRun.objects.get(id=run_response.json()["id"])
+    assert run.is_case_assessment is True
+    assert [item["text"] for item in run.case_evidence_snapshot] == [
+        "Original evidence available before the run."
+    ]
+
+    added_later = authenticated_client.post(
+        f"/api/v1/cases/{case['id']}/evidence/text",
+        data={"text": "This evidence was added after the model input was reserved."},
+        content_type="application/json",
+    )
+    assert added_later.status_code == 201
+    authenticated_client.post(
+        f"/api/v1/connectors/{connector_id}/claim",
+        HTTP_AUTHORIZATION=f"Bearer {token}",
+    )
+    completed = authenticated_client.post(
+        f"/api/v1/connectors/{connector_id}/jobs/{run.id}",
+        data={"output": VALID_OUTPUTS["BugTriageOutput"]},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token}",
+    )
+
+    assert completed.status_code == 200
+    assessment = CaseAssessment.objects.get(source_run=run)
+    assert [item["text"] for item in assessment.evidence_snapshot] == [
+        "Original evidence available before the run."
+    ]
 
 
 def test_connector_rejects_wrong_token_and_keeps_invalid_output_failure(

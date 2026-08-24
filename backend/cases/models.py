@@ -1,9 +1,15 @@
 import uuid
+from pathlib import Path
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from accounts.models import AppUser
+
+
+def case_evidence_upload_to(instance, filename: str) -> str:
+    suffix = Path(filename).suffix.lower()
+    return f"case-evidence/{instance.case.workspace_id}/{instance.case_id}/{uuid.uuid4()}{suffix}"
 
 
 class Workspace(models.Model):
@@ -71,6 +77,16 @@ class WorkspaceMember(models.Model):
 
 
 class OperationsCase(models.Model):
+    class Intent(models.TextChoices):
+        ISSUE = "issue", "Issue investigation"
+        CLARIFICATION = "clarification", "Clarification or guidance"
+        ENHANCEMENT = "enhancement", "Additional development"
+
+    class PublicationState(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+        ARCHIVED = "archived", "Archived"
+
     class Status(models.TextChoices):
         NEW = "new", "New"
         TRIAGING = "triaging", "Triaging"
@@ -95,6 +111,17 @@ class OperationsCase(models.Model):
     number = models.PositiveIntegerField()
     title = models.CharField(max_length=200)
     description = models.TextField(max_length=6000)
+    intent = models.CharField(max_length=24, choices=Intent.choices, default=Intent.ISSUE)
+    publication_state = models.CharField(
+        max_length=16,
+        choices=PublicationState.choices,
+        default=PublicationState.DRAFT,
+    )
+    affected_area = models.CharField(max_length=160, blank=True)
+    expected_outcome = models.TextField(max_length=3000, blank=True)
+    environment_context = models.TextField(max_length=2000, blank=True)
+    settings_context = models.TextField(max_length=2000, blank=True)
+    constraints = models.TextField(max_length=2000, blank=True)
     summary = models.TextField(max_length=3000, blank=True)
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.NEW)
     disposition = models.CharField(
@@ -118,6 +145,14 @@ class OperationsCase(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(blank=True, null=True)
+    published_by = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="published_operations_cases",
+        blank=True,
+        null=True,
+    )
     resolved_at = models.DateTimeField(blank=True, null=True)
     closed_at = models.DateTimeField(blank=True, null=True)
 
@@ -131,6 +166,7 @@ class OperationsCase(models.Model):
             )
         ]
         indexes = [
+            models.Index(fields=["workspace", "publication_state", "-updated_at"]),
             models.Index(fields=["workspace", "status", "-updated_at"]),
             models.Index(fields=["workspace", "disposition", "-updated_at"]),
         ]
@@ -179,6 +215,12 @@ class CaseEvent(models.Model):
         WORK_ITEM_CREATED = "work-item-created", "Work item created"
         WORK_ITEM_UPDATED = "work-item-updated", "Work item updated"
         RESOLUTION_RECORDED = "resolution-recorded", "Resolution recorded"
+        PUBLISHED = "published", "Published"
+        ARCHIVED = "archived", "Archived"
+        EVIDENCE_ADDED = "evidence-added", "Evidence added"
+        EVIDENCE_REMOVED = "evidence-removed", "Evidence removed"
+        ASSESSMENT_CREATED = "assessment-created", "Assessment created"
+        ASSESSMENT_APPLIED = "assessment-applied", "Assessment applied"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     case = models.ForeignKey(OperationsCase, on_delete=models.CASCADE, related_name="events")
@@ -197,3 +239,90 @@ class CaseEvent(models.Model):
         db_table = "case_events"
         ordering = ["-created_at", "-id"]
         indexes = [models.Index(fields=["case", "-created_at"])]
+
+
+class CaseEvidence(models.Model):
+    class Kind(models.TextChoices):
+        TEXT = "text", "Text"
+        IMAGE = "image", "Image"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(OperationsCase, on_delete=models.CASCADE, related_name="evidence")
+    created_by = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="case_evidence",
+        blank=True,
+        null=True,
+    )
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    text = models.TextField(max_length=3000, blank=True)
+    file = models.FileField(upload_to=case_evidence_upload_to, max_length=500, blank=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    caption = models.CharField(max_length=500, blank=True)
+    mime_type = models.CharField(max_length=64, blank=True)
+    byte_size = models.PositiveIntegerField(blank=True, null=True)
+    width = models.PositiveIntegerField(blank=True, null=True)
+    height = models.PositiveIntegerField(blank=True, null=True)
+    sha256 = models.CharField(max_length=64, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "case_evidence"
+        ordering = ["sort_order", "created_at", "id"]
+        indexes = [models.Index(fields=["case", "created_at"])]
+
+
+class CaseAssessment(models.Model):
+    class ConfidenceBand(models.TextChoices):
+        LOW = "low", "Low"
+        MEDIUM = "medium", "Medium"
+        HIGH = "high", "High"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(OperationsCase, on_delete=models.CASCADE, related_name="assessments")
+    source_run = models.OneToOneField(
+        "runs.WorkflowRun",
+        on_delete=models.SET_NULL,
+        related_name="case_assessment",
+        blank=True,
+        null=True,
+    )
+    sequence = models.PositiveIntegerField()
+    created_by = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="case_assessments",
+        blank=True,
+        null=True,
+    )
+    provider = models.CharField(max_length=32)
+    model = models.CharField(max_length=256)
+    intelligence = models.CharField(max_length=16)
+    prompt_version = models.CharField(max_length=64)
+    evidence_snapshot = models.JSONField(default=list)
+    result_json = models.JSONField(default=dict)
+    proposed_disposition = models.CharField(
+        max_length=32,
+        choices=OperationsCase.Disposition.choices,
+        default=OperationsCase.Disposition.UNCLASSIFIED,
+    )
+    model_confidence = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    decision_confidence = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(1)])
+    confidence_band = models.CharField(max_length=12, choices=ConfidenceBand.choices)
+    confidence_factors = models.JSONField(default=list)
+    is_applied = models.BooleanField(default=False)
+    applied_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "case_assessments"
+        ordering = ["-sequence", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["case", "sequence"],
+                name="cases_assessment_sequence_uniq",
+            )
+        ]
+        indexes = [models.Index(fields=["case", "-sequence"])]

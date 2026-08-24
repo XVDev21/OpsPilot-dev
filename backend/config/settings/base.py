@@ -95,7 +95,45 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CASE_EVIDENCE_MAX_BYTES = int(os.getenv("CASE_EVIDENCE_MAX_BYTES", str(8 * 1024 * 1024)))
+CASE_EVIDENCE_MAX_PIXELS = int(os.getenv("CASE_EVIDENCE_MAX_PIXELS", "10000000"))
+CASE_EVIDENCE_MAX_PER_CASE = int(os.getenv("CASE_EVIDENCE_MAX_PER_CASE", "20"))
+CASE_EVIDENCE_MAX_WORKSPACE_ITEMS = int(os.getenv("CASE_EVIDENCE_MAX_WORKSPACE_ITEMS", "200"))
+CASE_EVIDENCE_MAX_WORKSPACE_BYTES = int(
+    os.getenv("CASE_EVIDENCE_MAX_WORKSPACE_BYTES", str(512 * 1024 * 1024))
+)
+CASE_ASSESSMENT_MAX_IMAGES = int(os.getenv("CASE_ASSESSMENT_MAX_IMAGES", "8"))
+CASE_ASSESSMENT_MAX_IMAGE_BYTES = int(
+    os.getenv("CASE_ASSESSMENT_MAX_IMAGE_BYTES", str(24 * 1024 * 1024))
+)
+CASE_EVIDENCE_S3_BUCKET = os.getenv("CASE_EVIDENCE_S3_BUCKET", "").strip()
+CASE_EVIDENCE_UPLOADS_ENABLED = env_bool("CASE_EVIDENCE_UPLOADS_ENABLED", default=True)
+FILE_UPLOAD_HANDLERS = ["common.upload_handlers.BoundedTemporaryFileUploadHandler"]
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = 1
+if CASE_EVIDENCE_S3_BUCKET:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": CASE_EVIDENCE_S3_BUCKET,
+                "region_name": os.getenv("CASE_EVIDENCE_S3_REGION", "").strip() or None,
+                "endpoint_url": os.getenv("CASE_EVIDENCE_S3_ENDPOINT_URL", "").strip() or None,
+                "access_key": os.getenv("CASE_EVIDENCE_S3_ACCESS_KEY", "").strip() or None,
+                "secret_key": os.getenv("CASE_EVIDENCE_S3_SECRET_KEY", "").strip() or None,
+                "default_acl": None,
+                "file_overwrite": False,
+                "querystring_auth": True,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000").rstrip("/")
 CORS_ALLOWED_ORIGINS = [FRONTEND_ORIGIN] if FRONTEND_ORIGIN else []
@@ -162,6 +200,19 @@ if (
     <= 0
 ):
     raise ImproperlyConfigured("AI limits and workflow retention must be positive integers.")
+if (
+    min(
+        CASE_EVIDENCE_MAX_BYTES,
+        CASE_EVIDENCE_MAX_PIXELS,
+        CASE_EVIDENCE_MAX_PER_CASE,
+        CASE_EVIDENCE_MAX_WORKSPACE_ITEMS,
+        CASE_EVIDENCE_MAX_WORKSPACE_BYTES,
+        CASE_ASSESSMENT_MAX_IMAGES,
+        CASE_ASSESSMENT_MAX_IMAGE_BYTES,
+    )
+    <= 0
+):
+    raise ImproperlyConfigured("Case evidence limits must be positive integers.")
 
 LOGGING = {
     "version": 1,

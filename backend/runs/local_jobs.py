@@ -148,6 +148,10 @@ def complete_job(
     job.status = LocalConnectorJob.Status.COMPLETED
     job.lease_expires_at = None
     job.save(update_fields=["status", "lease_expires_at", "updated_at"])
+    if job.run.is_case_assessment:
+        from cases.assessments import create_assessment_from_run
+
+        create_assessment_from_run(run=job.run, actor=job.run.user)
     return job.run
 
 

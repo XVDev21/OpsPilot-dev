@@ -2,10 +2,23 @@ import { z } from "zod";
 import { workflowIds } from "@/features/workflows/types";
 import { ApiError } from "@/lib/api/errors";
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(jsonValueSchema)]),
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(jsonValueSchema),
+  ]),
 );
 
 export const backendUserSchema = z.object({
@@ -17,13 +30,48 @@ export const backendUserSchema = z.object({
 });
 
 export const runStatusSchema = z.enum(["pending", "completed", "failed"]);
-export const runExecutionPhaseSchema = z.enum(["queued", "preparing", "generating", "validating", "saving", "completed", "failed"]);
-export const aiProviderSchema = z.enum(["gemini", "openai", "qwen", "bedrock", "custom", "local"]);
+export const runExecutionPhaseSchema = z.enum([
+  "queued",
+  "preparing",
+  "generating",
+  "validating",
+  "saving",
+  "completed",
+  "failed",
+]);
+export const aiProviderSchema = z.enum([
+  "gemini",
+  "openai",
+  "qwen",
+  "bedrock",
+  "custom",
+  "local",
+]);
 export const intelligenceLevelSchema = z.enum(["fast", "balanced", "high"]);
-export const credentialSourceSchema = z.enum(["personal", "platform", "connector"]);
+export const credentialSourceSchema = z.enum([
+  "personal",
+  "platform",
+  "connector",
+]);
 export const qwenEndpointRegionSchema = z.enum(["singapore", "us", "beijing"]);
-export const awsRegionSchema = z.enum(["us-east-1", "us-east-2", "us-west-2", "ap-northeast-1", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "eu-central-1", "eu-west-1", "eu-west-2"]);
-export const modelIdSchema = z.string().trim().min(2).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{1,255}$/);
+export const awsRegionSchema = z.enum([
+  "us-east-1",
+  "us-east-2",
+  "us-west-2",
+  "ap-northeast-1",
+  "ap-south-1",
+  "ap-southeast-1",
+  "ap-southeast-2",
+  "eu-central-1",
+  "eu-west-1",
+  "eu-west-2",
+]);
+export const modelIdSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(256)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{1,255}$/);
 
 export const runOptionsSchema = z.object({
   provider: aiProviderSchema,
@@ -38,20 +86,30 @@ export const createRunRequestSchema = z.object({
 });
 
 export const executionOptionsSchema = z.object({
-  providers: z.array(z.object({
-    id: aiProviderSchema,
-    label: z.string(),
-    description: z.string(),
-    enabled: z.boolean(),
-    credentialSource: credentialSourceSchema.nullable(),
-    supportsPersonalKey: z.boolean(),
-  })),
-  intelligenceLevels: z.array(z.object({
-    id: intelligenceLevelSchema,
-    label: z.string(),
-    description: z.string(),
-    relativeUsage: z.enum(["lowest", "medium", "highest"]),
-  })),
+  providers: z.array(
+    z.object({
+      id: aiProviderSchema,
+      label: z.string(),
+      description: z.string(),
+      enabled: z.boolean(),
+      credentialSource: credentialSourceSchema.nullable(),
+      supportsPersonalKey: z.boolean(),
+      supportsImages: z.boolean(),
+      models: z.object({
+        fast: z.string().nullable(),
+        balanced: z.string().nullable(),
+        high: z.string().nullable(),
+      }),
+    }),
+  ),
+  intelligenceLevels: z.array(
+    z.object({
+      id: intelligenceLevelSchema,
+      label: z.string(),
+      description: z.string(),
+      relativeUsage: z.enum(["lowest", "medium", "highest"]),
+    }),
+  ),
   defaultProvider: aiProviderSchema,
   defaultIntelligence: intelligenceLevelSchema,
   retentionDays: z.number().int().positive(),
@@ -60,9 +118,14 @@ export const executionOptionsSchema = z.object({
 export const providerCredentialInputSchema = z.object({
   apiKey: z.string().trim().min(16).max(2_048),
   endpointRegion: qwenEndpointRegionSchema.nullable().optional(),
-  workspaceId: z.string().trim().min(2).max(63)
+  workspaceId: z
+    .string()
+    .trim()
+    .min(2)
+    .max(63)
     .regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])$/)
-    .nullable().optional(),
+    .nullable()
+    .optional(),
   displayName: z.string().trim().max(80).nullable().optional(),
   baseUrl: z.string().trim().url().max(500).nullable().optional(),
   awsRegion: awsRegionSchema.nullable().optional(),
@@ -117,7 +180,10 @@ export const runListResponseSchema = z.object({
   next_cursor: z.string().nullable().optional(),
 });
 
-export const backendRunListSchema = z.union([runListResponseSchema, z.array(workflowRunSchema)]);
+export const backendRunListSchema = z.union([
+  runListResponseSchema,
+  z.array(workflowRunSchema),
+]);
 
 export const localConnectorSummarySchema = z.object({
   id: z.string().uuid(),
@@ -132,7 +198,9 @@ export const localConnectorSummarySchema = z.object({
   updatedAt: z.string(),
 });
 
-export const localConnectorEnvelopeSchema = z.object({ connector: localConnectorSummarySchema.nullable() });
+export const localConnectorEnvelopeSchema = z.object({
+  connector: localConnectorSummarySchema.nullable(),
+});
 export const localConnectorPairingSchema = z.object({
   connector: localConnectorSummarySchema,
   pairingCode: z.string(),
@@ -156,9 +224,16 @@ export const workflowHandoffSchema = z.object({
   createdAt: z.string(),
   convertedAt: z.string().nullable(),
 });
-export const createHandoffInputSchema = z.object({ target: z.enum(["work-item", "meeting-actions", "status-update"]) });
+export const createHandoffInputSchema = z.object({
+  target: z.enum(["work-item", "meeting-actions", "status-update"]),
+});
 
-export const workItemStatusSchema = z.enum(["todo", "in-progress", "blocked", "done"]);
+export const workItemStatusSchema = z.enum([
+  "todo",
+  "in-progress",
+  "blocked",
+  "done",
+]);
 export const workItemSchema = z.object({
   id: z.string().uuid(),
   caseId: z.string().uuid().nullable(),
@@ -185,11 +260,16 @@ export const createWorkItemInputSchema = z.object({
   assigneeId: z.string().uuid().nullable().optional(),
   dueDate: z.string().date().nullable().optional(),
 });
-export const updateWorkItemInputSchema = z.object({
-  status: workItemStatusSchema.optional(),
-  assigneeId: z.string().uuid().nullable().optional(),
-  dueDate: z.string().date().nullable().optional(),
-}).refine((value) => Object.keys(value).length > 0, "Provide at least one work-item change.");
+export const updateWorkItemInputSchema = z
+  .object({
+    status: workItemStatusSchema.optional(),
+    assigneeId: z.string().uuid().nullable().optional(),
+    dueDate: z.string().date().nullable().optional(),
+  })
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    "Provide at least one work-item change.",
+  );
 
 export const workspaceMemberSchema = z.object({
   id: z.string().uuid(),
@@ -206,19 +286,46 @@ export const workspaceMemberSchema = z.object({
   isSample: z.boolean(),
   linkedAccount: z.boolean(),
 });
-export const workspaceMemberListSchema = z.object({ items: z.array(workspaceMemberSchema) });
+export const workspaceMemberListSchema = z.object({
+  items: z.array(workspaceMemberSchema),
+});
 
 export const caseStatusSchema = z.enum([
-  "new", "triaging", "needs-information", "action-required", "in-progress", "monitoring", "resolved", "closed",
+  "new",
+  "triaging",
+  "needs-information",
+  "action-required",
+  "in-progress",
+  "monitoring",
+  "resolved",
+  "closed",
 ]);
 export const caseDispositionSchema = z.enum([
-  "unclassified", "product-defect", "configuration-change", "process-guidance", "external-dependency", "duplicate", "needs-more-evidence",
+  "unclassified",
+  "product-defect",
+  "configuration-change",
+  "process-guidance",
+  "external-dependency",
+  "duplicate",
+  "needs-more-evidence",
+]);
+export const caseIntentSchema = z.enum([
+  "issue",
+  "clarification",
+  "enhancement",
+]);
+export const casePublicationStateSchema = z.enum([
+  "draft",
+  "published",
+  "archived",
 ]);
 export const operationsCaseSummarySchema = z.object({
   id: z.string().uuid(),
   key: z.string(),
   title: z.string(),
   summary: z.string(),
+  intent: caseIntentSchema,
+  publicationState: casePublicationStateSchema,
   status: caseStatusSchema,
   disposition: caseDispositionSchema,
   confidence: z.number().min(0).max(1).nullable(),
@@ -256,34 +363,109 @@ export const caseWorkItemSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+export const caseEvidenceSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.enum(["text", "image"]),
+  text: z.string(),
+  caption: z.string(),
+  originalFilename: z.string(),
+  mimeType: z.string(),
+  byteSize: z.number().int().nonnegative().nullable(),
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
+  downloadUrl: z.string().nullable(),
+  createdAt: z.string(),
+});
+export const confidenceFactorSchema = z.object({
+  name: z.string(),
+  score: z.number().min(0).max(1),
+  rationale: z.string(),
+});
+export const caseAssessmentSchema = z.object({
+  id: z.string().uuid(),
+  sequence: z.number().int().positive(),
+  sourceRunId: z.string().uuid().nullable(),
+  provider: z.string(),
+  model: z.string(),
+  intelligence: z.string(),
+  promptVersion: z.string(),
+  result: z.record(jsonValueSchema),
+  proposedDisposition: caseDispositionSchema,
+  modelConfidence: z.number().min(0).max(1),
+  decisionConfidence: z.number().min(0).max(1),
+  confidenceBand: z.enum(["low", "medium", "high"]),
+  confidenceFactors: z.array(confidenceFactorSchema),
+  isApplied: z.boolean(),
+  appliedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
 export const operationsCaseDetailSchema = operationsCaseSummarySchema.extend({
   description: z.string(),
+  affectedArea: z.string(),
+  expectedOutcome: z.string(),
+  environmentContext: z.string(),
+  settingsContext: z.string(),
+  constraints: z.string(),
+  publishedAt: z.string().nullable(),
   resolutionSummary: z.string(),
   resolvedAt: z.string().nullable(),
   closedAt: z.string().nullable(),
-  workflowRuns: z.array(z.object({
-    id: z.string().uuid(), workflowId: z.enum(workflowIds), status: runStatusSchema,
-    executionPhase: z.string(), createdAt: z.string(), completedAt: z.string().nullable(),
-  })),
+  workflowRuns: z.array(
+    z.object({
+      id: z.string().uuid(),
+      workflowId: z.enum(workflowIds),
+      status: runStatusSchema,
+      executionPhase: z.string(),
+      createdAt: z.string(),
+      completedAt: z.string().nullable(),
+    }),
+  ),
+  evidence: z.array(caseEvidenceSchema),
+  assessments: z.array(caseAssessmentSchema),
   workItems: z.array(caseWorkItemSchema),
   events: z.array(caseEventSchema),
 });
 export const createCaseInputSchema = z.object({
   title: z.string().trim().min(3).max(200),
   description: z.string().trim().min(12).max(6000),
+  intent: caseIntentSchema.default("issue"),
+  affectedArea: z.string().trim().max(160).optional(),
+  expectedOutcome: z.string().trim().max(3000).optional(),
+  environmentContext: z.string().trim().max(2000).optional(),
+  settingsContext: z.string().trim().max(2000).optional(),
+  constraints: z.string().trim().max(2000).optional(),
+  evidenceNotes: z.array(z.string().trim().min(3).max(3000)).max(12).optional(),
   summary: z.string().trim().max(3000).optional(),
   disposition: caseDispositionSchema.optional(),
   dueDate: z.string().date().nullable().optional(),
   assigneeId: z.string().uuid().nullable().optional(),
 });
-export const updateCaseInputSchema = z.object({
-  status: caseStatusSchema.optional(),
-  disposition: caseDispositionSchema.optional(),
-  confidence: z.number().min(0).max(1).nullable().optional(),
-  dueDate: z.string().date().nullable().optional(),
-  resolutionSummary: z.string().trim().max(4000).optional(),
-}).refine((value) => Object.keys(value).length > 0, "Provide at least one case change.");
-export const updateCaseAssignmentInputSchema = z.object({ assigneeId: z.string().uuid().nullable() });
+export const updateCaseInputSchema = z
+  .object({
+    status: caseStatusSchema.optional(),
+    disposition: caseDispositionSchema.optional(),
+    confidence: z.number().min(0).max(1).nullable().optional(),
+    dueDate: z.string().date().nullable().optional(),
+    resolutionSummary: z.string().trim().max(4000).optional(),
+    publicationState: z.enum(["draft", "archived"]).optional(),
+  })
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    "Provide at least one case change.",
+  );
+export const updateCaseAssignmentInputSchema = z.object({
+  assigneeId: z.string().uuid().nullable(),
+});
+export const publishCaseInputSchema = z.object({
+  assigneeId: z.string().uuid().nullable(),
+});
+export const createTextEvidenceInputSchema = z.object({
+  text: z.string().trim().min(3).max(3000),
+});
+export const createAssessmentInputSchema = z.object({
+  provider: aiProviderSchema,
+  intelligence: intelligenceLevelSchema,
+});
 
 export function parseApiResponse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -291,7 +473,8 @@ export function parseApiResponse<T>(schema: z.ZodType<T>, value: unknown): T {
     throw new ApiError(
       {
         code: "INVALID_API_RESPONSE",
-        message: "The live API returned data that did not match the OpsPilot contract.",
+        message:
+          "The live API returned data that did not match the OpsPilot contract.",
         retryable: true,
       },
       502,

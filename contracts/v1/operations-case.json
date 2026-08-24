@@ -3,6 +3,8 @@
   "key": "OPS-0001",
   "title": "Holiday field is missing",
   "summary": "Verify whether the payroll Holiday setting is disabled.",
+  "intent": "issue",
+  "publicationState": "published",
   "status": "triaging",
   "disposition": "configuration-change",
   "confidence": 0.82,
@@ -27,10 +29,68 @@
   "createdAt": "2026-08-23T08:00:00Z",
   "updatedAt": "2026-08-23T08:05:00Z",
   "description": "A payroll consultant cannot see the Holiday field while reviewing a client run.",
+  "affectedArea": "Payroll entry",
+  "expectedOutcome": "The Holiday field should be available to the payroll user.",
+  "environmentContext": "Production tenant, payroll consultant role",
+  "settingsContext": "Holiday field visibility has not yet been verified.",
+  "constraints": "Do not change production settings without approval.",
+  "publishedAt": "2026-08-23T08:02:00Z",
   "resolutionSummary": "",
   "resolvedAt": null,
   "closedAt": null,
   "workflowRuns": [],
+  "evidence": [
+    {
+      "id": "a2107a35-78cc-4c34-890d-d768db0dcf0e",
+      "kind": "text",
+      "text": "The field appears for administrators but not for the payroll consultant role.",
+      "caption": "",
+      "originalFilename": "",
+      "mimeType": "",
+      "byteSize": null,
+      "width": null,
+      "height": null,
+      "downloadUrl": null,
+      "createdAt": "2026-08-23T08:01:00Z"
+    }
+  ],
+  "assessments": [
+    {
+      "id": "ecb2ab3d-687e-42d7-b55d-cb9327b29c16",
+      "sequence": 1,
+      "sourceRunId": "21d9f642-97fc-42cf-9028-d51a5388a99b",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "intelligence": "balanced",
+      "promptVersion": "v4-case-assessment",
+      "result": {
+        "summary": "The role-specific behavior is consistent with a visibility setting.",
+        "confirmedFacts": ["Administrators can see the Holiday field."],
+        "contradictingEvidence": [],
+        "evidenceGaps": ["The Holiday visibility setting has not been inspected."],
+        "likelyCategory": "Role or payroll configuration",
+        "issueType": "configuration-or-process",
+        "routing": { "team": "support", "ownerId": null, "rationale": "Verify settings first." },
+        "recommendedChecks": ["Inspect Payroll Settings with an authorized user."],
+        "recommendedResolution": "Verify and enable the supported Holiday field visibility setting if disabled.",
+        "verificationSteps": ["Inspect the setting", "Reopen the payroll entry", "Confirm the field is visible"],
+        "confidence": 0.82,
+        "humanReviewNotice": "An operator must verify the exact setting path.",
+        "humanReviewRequired": true
+      },
+      "proposedDisposition": "configuration-change",
+      "modelConfidence": 0.82,
+      "decisionConfidence": 0.79,
+      "confidenceBand": "high",
+      "confidenceFactors": [
+        { "name": "Model confidence", "score": 0.82, "rationale": "Bounded model self-assessment." },
+        { "name": "Evidence coverage", "score": 0.8, "rationale": "Report and role evidence are present." }
+      ],
+      "isApplied": true,
+      "appliedAt": "2026-08-23T08:05:00Z",
+      "createdAt": "2026-08-23T08:04:00Z"
+    }
+  ],
   "workItems": [],
   "events": [
     {

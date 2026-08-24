@@ -16,7 +16,12 @@ def test_workflow_metadata_matches_the_three_product_jobs(authenticated_client: 
         "meeting-actions",
         "status-update",
     ]
-    assert all(workflow["promptVersion"] == "v3-team-routing" for workflow in response.json())
+    versions = {workflow["id"]: workflow["promptVersion"] for workflow in response.json()}
+    assert versions == {
+        "bug-triage": "v4-case-assessment",
+        "meeting-actions": "v3-team-routing",
+        "status-update": "v3-team-routing",
+    }
 
 
 def test_registry_has_input_and_output_schemas() -> None:

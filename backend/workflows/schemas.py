@@ -60,13 +60,17 @@ class RoutingRecommendation(Schema):
 class BugTriageOutput(Schema):
     summary: str
     confirmedFacts: list[str]
+    contradictingEvidence: list[str] = Field(default_factory=list)
     evidenceGaps: list[str]
     likelyCategory: str
     issueType: Literal["product-defect", "configuration-or-process", "needs-more-evidence"]
     routing: RoutingRecommendation
     recommendedChecks: list[str]
+    recommendedResolution: str = ""
+    verificationSteps: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0, le=1)
     humanReviewNotice: str
+    humanReviewRequired: bool = True
 
 
 class Participant(Schema):
@@ -131,6 +135,8 @@ class ProviderOption(Schema):
     enabled: bool
     credentialSource: Literal["personal", "platform", "connector"] | None
     supportsPersonalKey: bool
+    supportsImages: bool
+    models: dict[Literal["fast", "balanced", "high"], str | None]
 
 
 class IntelligenceOption(Schema):

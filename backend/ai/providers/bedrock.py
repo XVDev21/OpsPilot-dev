@@ -3,7 +3,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from ai.types import ProviderFailure, ProviderResult
+from ai.types import AIImage, ProviderFailure, ProviderResult
 
 
 class BedrockProvider:
@@ -24,7 +24,15 @@ class BedrockProvider:
         user_content: str,
         output_schema: type[BaseModel],
         max_output_tokens: int,
+        images: tuple[AIImage, ...] = (),
     ) -> ProviderResult:
+        if images:
+            raise ProviderFailure(
+                code="MODEL_CAPABILITY_MISMATCH",
+                message="This provider route is not verified for image evidence yet.",
+                status=422,
+                retryable=False,
+            )
         schema = output_schema.model_json_schema()
         url = (
             f"https://bedrock-runtime.{self.region}.amazonaws.com/"
