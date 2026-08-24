@@ -2,7 +2,7 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Case-first assessments + private evidence
+**Current milestone:** Case delivery collaboration + Work Status
 **Status:** Implementation complete; release gates passed; draft PR ready
 
 ## Milestones
@@ -19,8 +19,53 @@
 - [x] Human-reviewed Bug Triage handoffs and personal Work Items
 - [x] Operations Cases, durable personal workspaces, and real member assignments
 - [x] Case-first intake, private multimodal evidence, and confidence-based assessments
+- [x] Advisory-backed publication, case delivery updates, tasks, and Work Status
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Case delivery collaboration and Work Status
+
+- [x] make advisory review part of the primary draft workspace and use the applied assessment as
+  the default publication basis for issue cases
+- [x] require an applied advisory before standard issue publication while retaining an explicit,
+  audited owner override for urgent or intentionally unassessed publication
+- [x] persist the exact published assessment provenance without allowing AI to publish, assign,
+  resolve, verify, or send information externally
+- [x] add owner, operator, contributor, and viewer workspace access roles with server-enforced case,
+  assessment, assignment, task, update, and evidence permissions
+- [x] add append-only, idempotent Case Updates for progress, blocker, decision, clarification,
+  resolution, and verification records with authenticated authorship
+- [x] support private JPEG/PNG/WebP update attachments through the same authenticated storage and
+  workspace-quota boundary as case evidence
+- [x] require human verification after a resolution update; passing verification resolves the
+  case, while failure reopens delivery in progress
+- [x] expose Case Tasks inside the case control plane while preserving the existing Work Item table,
+  API compatibility, source-run lineage, and historic links
+- [x] add responsive Workspace, My Assigned, Needs Attention, Verification, and Resolved Work Status
+  scopes with case owner, due-date, task, blocker, and delivery state visibility
+- [x] fold new delivery activity into the case journal, redirect legacy Work Items and History entry
+  points, and remove both from primary navigation
+- [x] emit durable notification-ready case domain events without sending email or external workspace
+  messages in this milestone
+- [x] keep sample members assignable but non-authenticating, non-authoring, and non-notifiable until
+  they are explicitly linked to a real account
+
+```text
+backend Ruff            PASS - format and lint
+migration consistency   PASS - no model changes missing migrations
+Django checks           PASS - local system checks
+backend tests           PASS - 127 tests, 90.20% branch coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 19 files, 51 tests
+frontend build          PASS - Next.js 16.3.1, 34 generated pages
+browser verification    PASS - 1280 desktop and 390x844 mobile in light/dark, responsive navigation,
+                          zero horizontal overflow and zero console errors; authenticated case
+                          components/BFF routes covered by tests because this clean C: worktree has
+                          no local WorkOS callback/session configuration
+security diff scan      PASS AFTER HARDENING - complete changed-file coverage; two authorization
+                          edge cases remediated and regression-tested; zero reportable findings
+```
 
 ## Case-first assessments and private evidence
 

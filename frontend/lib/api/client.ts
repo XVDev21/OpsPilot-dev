@@ -18,11 +18,14 @@ import {
   operationsCaseListSchema,
   operationsCaseDetailSchema,
   caseEvidenceSchema,
+  caseUpdateSchema,
+  caseUpdateAttachmentSchema,
 } from "@/lib/api/schemas";
 import type { WorkflowId } from "@/features/workflows/types";
 import type {
   AIProvider,
   CreateCaseInput,
+  CreateCaseUpdateInput,
   IntelligenceLevel,
   ProviderCredentialInput,
   UpdateCaseInput,
@@ -370,15 +373,47 @@ export const djangoApi = {
   async publishCase(
     accessToken: string,
     caseId: string,
-    assigneeId: string | null,
+    input: {
+      assigneeId: string | null;
+      assessmentId?: string | null;
+      overrideAdvisory?: boolean;
+    },
   ) {
     return parseApiResponse(
       operationsCaseDetailSchema,
       await request<unknown>(`/cases/${encodeURIComponent(caseId)}/publish`, {
         accessToken,
         method: "POST",
-        body: JSON.stringify({ assigneeId }),
+        body: JSON.stringify(input),
       }),
+    );
+  },
+  async createCaseUpdate(
+    accessToken: string,
+    caseId: string,
+    input: CreateCaseUpdateInput,
+  ) {
+    return parseApiResponse(
+      caseUpdateSchema,
+      await request<unknown>(`/cases/${encodeURIComponent(caseId)}/updates`, {
+        accessToken,
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async uploadCaseUpdateImage(
+    accessToken: string,
+    caseId: string,
+    updateId: string,
+    formData: FormData,
+  ) {
+    return parseApiResponse(
+      caseUpdateAttachmentSchema,
+      await request<unknown>(
+        `/cases/${encodeURIComponent(caseId)}/updates/${encodeURIComponent(updateId)}/images`,
+        { accessToken, method: "POST", body: formData },
+      ),
     );
   },
   async addTextEvidence(accessToken: string, caseId: string, text: string) {
@@ -421,6 +456,16 @@ export const djangoApi = {
   evidenceContent(accessToken: string, caseId: string, evidenceId: string) {
     return requestFile(
       `/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}/content`,
+      accessToken,
+    );
+  },
+  caseUpdateImageContent(
+    accessToken: string,
+    caseId: string,
+    attachmentId: string,
+  ) {
+    return requestFile(
+      `/cases/${encodeURIComponent(caseId)}/updates/attachments/${encodeURIComponent(attachmentId)}/content`,
       accessToken,
     );
   },

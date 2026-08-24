@@ -113,12 +113,60 @@ describe("operations case register", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Assessment 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evidence before publication" })).toBeInTheDocument();
+    expect(screen.getByText(/Advisory 1 reviewed and applied/i)).toBeInTheDocument();
     expect(
       screen.getByText(/AI results do not control publication/i),
     ).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Publish unassigned" }),
     );
-    expect(publish).toHaveBeenCalledWith(draftCase.id, null);
+    expect(publish).toHaveBeenCalledWith(draftCase.id, {
+      assigneeId: null,
+      assessmentId: draftCase.assessments[0].id,
+    });
+  });
+
+  it("posts an attributed delivery update from a published case", async () => {
+    const user = userEvent.setup();
+    const publishedCase = operationsCaseDetailSchema.parse(operationsCaseFixture);
+    vi.spyOn(browserApi, "getCase").mockResolvedValue(publishedCase);
+    vi.spyOn(browserApi, "listWorkspaceMembers").mockResolvedValue(
+      workspaceMemberListSchema.parse(workspaceMembersFixture),
+    );
+    vi.spyOn(browserApi, "executionOptions").mockResolvedValue(
+      executionOptionsSchema.parse(executionOptionsFixture),
+    );
+    const createUpdate = vi.spyOn(browserApi, "createCaseUpdate").mockResolvedValue({
+      id: "fef037b8-52cf-4f84-b12d-26a9fd65baa2",
+      type: "progress",
+      body: "Verified the worker queue and captured the next action.",
+      author: null,
+      taskId: null,
+      externalLinks: [],
+      verificationResult: "",
+      attachments: [],
+      createdAt: "2026-08-25T01:00:00Z",
+    });
+
+    render(
+      <QueryProvider>
+        <CaseDetail caseId={publishedCase.id} />
+      </QueryProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Move the case forward" })).toBeInTheDocument();
+    await user.type(
+      screen.getByPlaceholderText(/What changed, what remains/i),
+      "Verified the worker queue and captured the next action.",
+    );
+    await user.click(screen.getByRole("button", { name: "Post update" }));
+    expect(createUpdate).toHaveBeenCalledWith(
+      publishedCase.id,
+      expect.objectContaining({
+        type: "progress",
+        body: "Verified the worker queue and captured the next action.",
+      }),
+    );
   });
 });

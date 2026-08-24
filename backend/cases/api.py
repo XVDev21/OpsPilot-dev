@@ -5,6 +5,11 @@ from django.http import FileResponse
 from ninja import File, Query, Router, Status, UploadedFile
 
 from cases.assessments import apply_assessment, run_case_assessment
+from cases.delivery import (
+    add_update_image,
+    attachment_for_user,
+    create_case_update,
+)
 from cases.evidence import (
     add_image_evidence,
     add_text_evidence,
@@ -12,14 +17,23 @@ from cases.evidence import (
     remove_evidence,
 )
 from cases.models import WorkspaceMember
-from cases.presenters import case_detail_dict, case_summary_dict, evidence_dict, member_dict
+from cases.presenters import (
+    case_detail_dict,
+    case_summary_dict,
+    case_update_dict,
+    evidence_dict,
+    member_dict,
+)
 from cases.schemas import (
     CaseDetailSchema,
     CaseEvidenceSchema,
     CaseListQuery,
     CaseListResponse,
+    CaseUpdateAttachmentSchema,
+    CaseUpdateSchema,
     CreateAssessmentInput,
     CreateCaseInput,
+    CreateCaseUpdateInput,
     CreateTextEvidenceInput,
     PublishCaseInput,
     UpdateCaseAssignmentInput,
@@ -148,6 +162,79 @@ def put_case_assignment(request, case_id: UUID, payload: UpdateCaseAssignmentInp
 
 
 @router.post(
+    "/cases/{case_id}/updates",
+    response={201: CaseUpdateSchema},
+    summary="Post an append-only case update",
+)
+def post_case_update(request, case_id: UUID, payload: CreateCaseUpdateInput):
+    update = create_case_update(
+        user=request.auth.user,
+        case_id=case_id,
+        update_type=payload.type,
+        body=payload.body,
+        client_request_id=payload.clientRequestId,
+        task_id=payload.taskId,
+        external_links=[
+            {"label": item.label, "url": str(item.url)} for item in payload.externalLinks
+        ],
+        verification_result=payload.verificationResult or "",
+    )
+    return Status(201, case_update_dict(update))
+
+
+@router.post(
+    "/cases/{case_id}/updates/{update_id}/images",
+    response={201: CaseUpdateAttachmentSchema},
+    summary="Attach a private image to a case update",
+)
+def post_case_update_image(
+    request,
+    case_id: UUID,
+    update_id: UUID,
+    file: File[UploadedFile],
+):
+    attachment = add_update_image(
+        user=request.auth.user,
+        case_id=case_id,
+        update_id=update_id,
+        uploaded_file=file,
+    )
+    return Status(
+        201,
+        {
+            "id": attachment.id,
+            "originalFilename": attachment.original_filename,
+            "mimeType": attachment.mime_type,
+            "byteSize": attachment.byte_size,
+            "width": attachment.width,
+            "height": attachment.height,
+            "downloadUrl": (f"/api/v1/cases/{case_id}/updates/attachments/{attachment.id}/content"),
+        },
+    )
+
+
+@router.get(
+    "/cases/{case_id}/updates/attachments/{attachment_id}/content",
+    summary="Download a private case-update image",
+)
+def get_case_update_image(request, case_id: UUID, attachment_id: UUID):
+    attachment = attachment_for_user(
+        user=request.auth.user,
+        case_id=case_id,
+        attachment_id=attachment_id,
+    )
+    response = FileResponse(
+        attachment.file.open("rb"),
+        content_type=attachment.mime_type,
+        as_attachment=False,
+        filename=attachment.original_filename,
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@router.post(
     "/cases/{case_id}/publish",
     response=CaseDetailSchema,
     summary="Publish an operations case",
@@ -158,6 +245,8 @@ def post_case_publish(request, case_id: UUID, payload: PublishCaseInput):
             user=request.auth.user,
             case_id=case_id,
             assignee_id=payload.assigneeId,
+            assessment_id=payload.assessmentId,
+            override_advisory=payload.overrideAdvisory,
         )
     )
 

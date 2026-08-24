@@ -12,6 +12,12 @@ def case_evidence_upload_to(instance, filename: str) -> str:
     return f"case-evidence/{instance.case.workspace_id}/{instance.case_id}/{uuid.uuid4()}{suffix}"
 
 
+def case_update_upload_to(instance, filename: str) -> str:
+    suffix = Path(filename).suffix.lower()
+    update = instance.update
+    return f"case-updates/{update.case.workspace_id}/{update.case_id}/{uuid.uuid4()}{suffix}"
+
+
 class Workspace(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.OneToOneField(
@@ -29,6 +35,12 @@ class Workspace(models.Model):
 
 
 class WorkspaceMember(models.Model):
+    class AccessRole(models.TextChoices):
+        OWNER = "owner", "Owner"
+        OPERATOR = "operator", "Operator"
+        CONTRIBUTOR = "contributor", "Contributor"
+        VIEWER = "viewer", "Viewer"
+
     class Tone(models.TextChoices):
         INDIGO = "indigo", "Indigo"
         CYAN = "cyan", "Cyan"
@@ -54,6 +66,11 @@ class WorkspaceMember(models.Model):
     availability = models.CharField(max_length=40, default="Available")
     workflow_fit = models.JSONField(default=list, blank=True)
     tone = models.CharField(max_length=16, choices=Tone.choices, default=Tone.NEUTRAL)
+    access_role = models.CharField(
+        max_length=16,
+        choices=AccessRole.choices,
+        default=AccessRole.CONTRIBUTOR,
+    )
     is_sample = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -93,6 +110,7 @@ class OperationsCase(models.Model):
         NEEDS_INFORMATION = "needs-information", "Needs information"
         ACTION_REQUIRED = "action-required", "Action required"
         IN_PROGRESS = "in-progress", "In progress"
+        VERIFICATION = "verification", "Verification"
         MONITORING = "monitoring", "Monitoring"
         RESOLVED = "resolved", "Resolved"
         CLOSED = "closed", "Closed"
@@ -150,6 +168,13 @@ class OperationsCase(models.Model):
         AppUser,
         on_delete=models.SET_NULL,
         related_name="published_operations_cases",
+        blank=True,
+        null=True,
+    )
+    published_assessment = models.ForeignKey(
+        "CaseAssessment",
+        on_delete=models.SET_NULL,
+        related_name="publication_decisions",
         blank=True,
         null=True,
     )
@@ -221,6 +246,10 @@ class CaseEvent(models.Model):
         EVIDENCE_REMOVED = "evidence-removed", "Evidence removed"
         ASSESSMENT_CREATED = "assessment-created", "Assessment created"
         ASSESSMENT_APPLIED = "assessment-applied", "Assessment applied"
+        UPDATE_ADDED = "update-added", "Update added"
+        TASK_CREATED = "task-created", "Task created"
+        TASK_UPDATED = "task-updated", "Task updated"
+        VERIFICATION_RECORDED = "verification-recorded", "Verification recorded"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     case = models.ForeignKey(OperationsCase, on_delete=models.CASCADE, related_name="events")
@@ -326,3 +355,111 @@ class CaseAssessment(models.Model):
             )
         ]
         indexes = [models.Index(fields=["case", "-sequence"])]
+
+
+class CaseUpdate(models.Model):
+    class Type(models.TextChoices):
+        PROGRESS = "progress", "Progress"
+        BLOCKER = "blocker", "Blocker"
+        DECISION = "decision", "Decision"
+        CLARIFICATION = "clarification", "Clarification"
+        RESOLUTION = "resolution", "Resolution proposal"
+        VERIFICATION = "verification", "Verification"
+
+    class VerificationResult(models.TextChoices):
+        PASSED = "passed", "Passed"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(OperationsCase, on_delete=models.CASCADE, related_name="updates")
+    author = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="case_updates",
+        blank=True,
+        null=True,
+    )
+    author_member = models.ForeignKey(
+        WorkspaceMember,
+        on_delete=models.SET_NULL,
+        related_name="authored_case_updates",
+        blank=True,
+        null=True,
+    )
+    task = models.ForeignKey(
+        "workitems.WorkItem",
+        on_delete=models.SET_NULL,
+        related_name="case_updates",
+        blank=True,
+        null=True,
+    )
+    update_type = models.CharField(max_length=20, choices=Type.choices)
+    body = models.TextField(max_length=6000)
+    external_links = models.JSONField(default=list, blank=True)
+    verification_result = models.CharField(
+        max_length=12,
+        choices=VerificationResult.choices,
+        blank=True,
+    )
+    client_request_id = models.UUIDField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "case_updates"
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["case", "client_request_id"],
+                name="cases_update_request_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["case", "-created_at"]),
+            models.Index(fields=["author_member", "-created_at"]),
+        ]
+
+
+class CaseUpdateAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    update = models.ForeignKey(CaseUpdate, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField(upload_to=case_update_upload_to, max_length=500)
+    original_filename = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=64)
+    byte_size = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "case_update_attachments"
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["update", "created_at"])]
+
+
+class CaseDomainEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        OperationsCase,
+        on_delete=models.CASCADE,
+        related_name="domain_events",
+    )
+    actor = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="case_domain_events",
+        blank=True,
+        null=True,
+    )
+    event_type = models.CharField(max_length=64)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = "case_domain_events"
+        ordering = ["created_at", "id"]
+        indexes = [
+            models.Index(fields=["delivered_at", "created_at"]),
+            models.Index(fields=["case", "created_at"]),
+        ]

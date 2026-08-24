@@ -38,7 +38,8 @@ describe("navigation and themes", () => {
     );
     expect(screen.getAllByRole("link", { name: /Cases/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /^Workflows$/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /History/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Work Status/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: /History/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
   });
 

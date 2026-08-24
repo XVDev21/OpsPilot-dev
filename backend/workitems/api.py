@@ -34,6 +34,8 @@ def work_item_response(item: WorkItem) -> dict:
         "assigneeKey": item.assignee.key if item.assignee else None,
         "assigneeName": item.assignee.name if item.assignee else None,
         "dueDate": item.due_date,
+        "blockerReason": item.blocker_reason,
+        "completedAt": item.completed_at,
         "sourceRunId": item.source_run_id,
         "sourceHandoffId": item.source_handoff_id,
         "createdAt": item.created_at,
@@ -100,5 +102,7 @@ def patch_work_item(request, item_id: UUID, payload: UpdateWorkItemInput):
         assignee_supplied="assigneeId" in payload.model_fields_set,
         due_date=payload.dueDate,
         due_date_supplied="dueDate" in payload.model_fields_set,
+        blocker_reason=payload.blockerReason,
+        blocker_reason_supplied="blockerReason" in payload.model_fields_set,
     )
     return work_item_response(item)

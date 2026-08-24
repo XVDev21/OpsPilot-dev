@@ -1,11 +1,11 @@
 from uuid import UUID
 
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
 from accounts.models import AppUser
 from cases.models import CaseEvent
-from cases.selectors import case_for_user, member_for_user
+from cases.selectors import acting_member, case_for_user, member_for_user, require_case_manager
 from cases.services import record_case_event
 from common.errors import OpsPilotError
 from runs.models import WorkflowRun
@@ -128,6 +128,14 @@ def create_work_item(
             status=422,
         )
     case = requested_case or (handoff.case if handoff else None)
+    if case is not None and case.publication_state != case.PublicationState.PUBLISHED:
+        raise OpsPilotError(
+            code="CASE_NOT_PUBLISHED",
+            message="Publish this case before creating delivery tasks.",
+            status=409,
+        )
+    if case is not None:
+        require_case_manager(user=user, case=case)
     assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
     item = WorkItem.objects.create(
         user=user,
@@ -171,21 +179,53 @@ def update_work_item(
     assignee_supplied: bool = False,
     due_date=None,
     due_date_supplied: bool = False,
+    blocker_reason: str | None = None,
+    blocker_reason_supplied: bool = False,
 ) -> WorkItem:
     item = (
         WorkItem.objects.select_for_update()
-        .select_related("case", "assignee")
-        .filter(user=user, id=item_id)
+        .select_related("case", "case__workspace", "assignee")
+        .filter(id=item_id)
+        .filter(
+            models.Q(case__isnull=True, user=user)
+            | models.Q(
+                case__workspace__members__app_user=user,
+                case__workspace__members__is_active=True,
+            )
+        )
         .first()
     )
     if item is None:
         raise OpsPilotError(code="NOT_FOUND", message="That work item was not found.", status=404)
+    if item.case is not None:
+        member = acting_member(user=user, workspace_id=item.case.workspace_id)
+        manager = member.access_role in {
+            member.AccessRole.OWNER,
+            member.AccessRole.OPERATOR,
+        }
+        assigned_contributor = (
+            member.access_role == member.AccessRole.CONTRIBUTOR and item.assignee_id == member.id
+        )
+        if not manager and not assigned_contributor:
+            raise OpsPilotError(
+                code="CASE_TASK_ACCESS_DENIED",
+                message="Only case managers or the assigned contributor can update this task.",
+                status=403,
+            )
+        if not manager and (assignee_supplied or due_date_supplied):
+            raise OpsPilotError(
+                code="CASE_TASK_MANAGER_REQUIRED",
+                message="Only case managers can change task ownership or due dates.",
+                status=403,
+            )
     changes: dict[str, dict] = {}
     update_fields: list[str] = []
     if status is not None and status != item.status:
         changes["status"] = {"from": item.status, "to": status}
         item.status = status
         update_fields.append("status")
+        item.completed_at = timezone.now() if status == WorkItem.Status.DONE else None
+        update_fields.append("completed_at")
     if assignee_supplied:
         assignee = member_for_user(user=user, member_id=assignee_id) if assignee_id else None
         if assignee != item.assignee:
@@ -204,6 +244,10 @@ def update_work_item(
         }
         item.due_date = due_date
         update_fields.append("due_date")
+    if blocker_reason_supplied and blocker_reason != item.blocker_reason:
+        changes["blockerReason"] = {"recorded": bool(blocker_reason)}
+        item.blocker_reason = blocker_reason or ""
+        update_fields.append("blocker_reason")
     if update_fields:
         item.save(update_fields=[*update_fields, "updated_at"])
         if item.case is not None:

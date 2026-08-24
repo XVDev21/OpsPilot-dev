@@ -117,18 +117,59 @@ treating production image evidence as durable. Do not make the bucket public.
 - Meeting Actions and Status Update data remain readable. New authenticated intake does not launch
   either as a standalone workflow.
 
-## Locked PR 3 plan — Work Status collaboration
+## Implemented PR 3 — Work Status collaboration
 
-PR 3 must build on this contract without restoring a top-level Workflows area:
+PR 3 builds on the case-first contract without restoring a top-level Workflows area:
 
-1. add append-only `CaseUpdate` records with authenticated authorship;
-2. support text and private image progress/resolution updates;
-3. add workspace Work Status and My Assigned views for published cases;
-4. add assignee-facing state, due-date, progress, resolution, and permission controls;
-5. migrate Work Items into optional Case Tasks with preserved lineage;
-6. fold technical History into Case Activity and remove top-level Work Items/History navigation;
-7. emit notification-ready domain events, but do not send email yet;
-8. keep Slack, Pumble, Linear, and email as later event consumers, not PR 3 dependencies.
+1. append-only, idempotent `CaseUpdate` records capture authenticated progress, blockers,
+   decisions, clarifications, resolutions, and verification;
+2. text and private image updates share the evidence storage authorization and quota boundary;
+3. workspace Work Status, My Assigned, Needs Attention, Verification, and Resolved views organize
+   published delivery work;
+4. role-aware assignee controls allow real linked contributors to update their assigned work while
+   reserving publication, assignment, assessment, due-date, and evidence changes for managers;
+5. existing Work Items remain in the database and compatibility API while presenting as Case Tasks
+   inside the case control plane;
+6. new delivery history lives in Case Activity and the top-level Work Items/History navigation is
+   retired through compatibility redirects;
+7. notification-ready domain events are durable, but do not send email or workspace messages yet;
+8. Slack, Pumble, Linear, and email remain later human-controlled event consumers.
+
+Issue drafts now place Evidence and Advisory Assessment in the primary decision workspace. Standard
+publication uses the exact applied advisory as its immutable publication basis. An owner can publish
+without one only through an explicit override that is captured in case activity. AI remains advisory:
+it cannot publish, assign, resolve, verify, or send a case.
+
+Resolution is a two-person-capable delivery step rather than an automatic close. A resolution update
+moves the case to verification; a verification pass resolves it, and a failed check reopens active
+delivery with the verification record preserved.
 
 Sample members remain clearly fictional database records. They may be assigned, but they cannot sign
 in, author updates, receive notifications, or generate simulated activity.
+
+## Locked PR 4 plan — real workspace participation and notifications
+
+PR 4 should make collaboration real for invited people before adding broad third-party automation:
+
+1. introduce workspace invitation and membership lifecycle APIs using WorkOS identities, including
+   pending, active, suspended, and removed states;
+2. allow an owner to replace or link a sample profile to an invited real member without rewriting
+   historical assignments or case events;
+3. add role management for owner, operator, contributor, and viewer with last-owner and self-removal
+   safety rules;
+4. add default-on email preferences at workspace and personal levels, with per-event controls for
+   assignment, blocker, mention, resolution, verification, and due-date changes;
+5. consume `CaseDomainEvent` through an idempotent outbox dispatcher with retries, terminal failure
+   state, and delivery audit records;
+6. ship transactional assignment, blocker, and verification email templates plus authenticated deep
+   links and unsubscribe/preference management;
+7. add a Connections surface that reserves provider-neutral Slack, Pumble, and Linear destinations,
+   scopes, and delivery policy without allowing AI to send or create external work autonomously;
+8. keep all external delivery behind a human preview/confirm action and preserve external message or
+   issue identifiers on the case timeline for retry-safe linking;
+9. add integration, permission, retry, email-preference, accessibility, responsive-browser, and
+   security regression coverage before deployment.
+
+Slack, Pumble, and Linear OAuth/API implementations may be delivered in the following connector PR
+once their app registrations and production redirect URLs exist. PR 4 must leave the schema and UI
+ready for those connectors without requiring their credentials to merge.

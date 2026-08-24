@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from ninja import Schema
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import Field, HttpUrl, StringConstraints, model_validator
 
 CaseStatus = Literal[
     "new",
@@ -11,6 +11,7 @@ CaseStatus = Literal[
     "needs-information",
     "action-required",
     "in-progress",
+    "verification",
     "monitoring",
     "resolved",
     "closed",
@@ -42,6 +43,7 @@ class WorkspaceMemberSchema(Schema):
     tone: Literal["indigo", "cyan", "amber", "neutral"]
     isSample: bool
     linkedAccount: bool
+    accessRole: Literal["owner", "operator", "contributor", "viewer"]
 
 
 class WorkspaceMemberList(Schema):
@@ -139,6 +141,8 @@ class UpdateCaseAssignmentInput(Schema):
 
 class PublishCaseInput(Schema):
     assigneeId: UUID | None = None
+    assessmentId: UUID | None = None
+    overrideAdvisory: bool = False
 
 
 class CaseEventSchema(Schema):
@@ -217,10 +221,56 @@ class CaseWorkItemSchema(Schema):
     status: Literal["todo", "in-progress", "blocked", "done"]
     assignee: WorkspaceMemberSchema | None
     dueDate: date | None
+    blockerReason: str
+    completedAt: datetime | None
     sourceRunId: UUID | None
     sourceHandoffId: UUID | None
     createdAt: datetime
     updatedAt: datetime
+
+
+class CaseUpdateAttachmentSchema(Schema):
+    id: UUID
+    originalFilename: str
+    mimeType: str
+    byteSize: int
+    width: int
+    height: int
+    downloadUrl: str
+
+
+class CaseUpdateSchema(Schema):
+    id: UUID
+    type: Literal["progress", "blocker", "decision", "clarification", "resolution", "verification"]
+    body: str
+    author: WorkspaceMemberSchema | None
+    taskId: UUID | None
+    externalLinks: list[dict]
+    verificationResult: Literal["", "passed", "failed"]
+    attachments: list[CaseUpdateAttachmentSchema]
+    createdAt: datetime
+
+
+class ExternalLinkInput(Schema):
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=80)]
+    url: HttpUrl
+
+
+class CreateCaseUpdateInput(Schema):
+    clientRequestId: UUID
+    type: Literal["progress", "blocker", "decision", "clarification", "resolution", "verification"]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=6000)]
+    taskId: UUID | None = None
+    externalLinks: list[ExternalLinkInput] = Field(default_factory=list, max_length=8)
+    verificationResult: Literal["passed", "failed"] | None = None
+
+    @model_validator(mode="after")
+    def validate_verification(self):
+        if self.type == "verification" and self.verificationResult is None:
+            raise ValueError("A verification update requires a passed or failed result.")
+        if self.type != "verification" and self.verificationResult is not None:
+            raise ValueError("Only verification updates can include a verification result.")
+        return self
 
 
 class CaseDetailSchema(CaseSummarySchema):
@@ -231,6 +281,7 @@ class CaseDetailSchema(CaseSummarySchema):
     settingsContext: str
     constraints: str
     publishedAt: datetime | None
+    publishedAssessmentId: UUID | None
     resolutionSummary: str
     resolvedAt: datetime | None
     closedAt: datetime | None
@@ -238,4 +289,5 @@ class CaseDetailSchema(CaseSummarySchema):
     evidence: list[CaseEvidenceSchema]
     assessments: list[CaseAssessmentSchema]
     workItems: list[CaseWorkItemSchema]
+    updates: list[CaseUpdateSchema]
     events: list[CaseEventSchema]
