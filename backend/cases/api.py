@@ -5,6 +5,18 @@ from django.http import FileResponse
 from ninja import File, Query, Router, Status, UploadedFile
 
 from cases.assessments import apply_assessment, run_case_assessment
+from cases.collaboration import (
+    activate_collaboration,
+    invite_workspace_member,
+    process_workos_event,
+    reconcile_workspace,
+    resend_workspace_invitation,
+    revoke_workspace_invitation,
+    update_workspace_member,
+    workspace_context,
+    workspace_invitations,
+    workspace_members,
+)
 from cases.delivery import (
     add_update_image,
     attachment_for_user,
@@ -16,15 +28,16 @@ from cases.evidence import (
     evidence_for_user,
     remove_evidence,
 )
-from cases.models import WorkspaceMember
 from cases.presenters import (
     case_detail_dict,
     case_summary_dict,
     case_update_dict,
     evidence_dict,
-    member_dict,
+    invitation_dict,
+    roster_member_dict,
 )
 from cases.schemas import (
+    ActivateCollaborationInput,
     CaseDetailSchema,
     CaseEvidenceSchema,
     CaseListQuery,
@@ -35,22 +48,44 @@ from cases.schemas import (
     CreateCaseInput,
     CreateCaseUpdateInput,
     CreateTextEvidenceInput,
+    InviteWorkspaceMemberInput,
     PublishCaseInput,
     UpdateCaseAssignmentInput,
     UpdateCaseInput,
+    UpdateWorkspaceMemberInput,
+    WorkspaceContextSchema,
+    WorkspaceInvitationList,
+    WorkspaceInvitationSchema,
     WorkspaceMemberList,
+    WorkspaceReconciliationSchema,
+    WorkspaceRosterMemberSchema,
 )
 from cases.selectors import case_for_user, cases_for_user
 from cases.services import (
     assign_case,
     create_case,
-    ensure_personal_workspace,
     publish_case,
     update_case,
 )
+from cases.workos_directory import get_workos_directory
 from runs.schemas import WorkflowRunSchema
 
 router = Router(tags=["operations cases"])
+
+
+@router.get("/workspace", response=WorkspaceContextSchema, summary="Current workspace context")
+def get_workspace_context(request):
+    return workspace_context(request.auth.user)
+
+
+@router.post(
+    "/workspace/collaboration",
+    response=WorkspaceContextSchema,
+    summary="Enable WorkOS workspace collaboration",
+)
+def post_workspace_collaboration(request, payload: ActivateCollaborationInput):
+    activate_collaboration(user=request.auth.user, name=payload.name)
+    return workspace_context(request.auth.user)
 
 
 @router.get(
@@ -59,9 +94,98 @@ router = Router(tags=["operations cases"])
     summary="Personal workspace members",
 )
 def list_workspace_members(request):
-    workspace = ensure_personal_workspace(request.auth.user)
-    members = WorkspaceMember.objects.filter(workspace=workspace, is_active=True)
-    return {"items": [member_dict(member) for member in members]}
+    members = workspace_members(request.auth.user)
+    return {"items": [roster_member_dict(member) for member in members]}
+
+
+@router.patch(
+    "/workspace/members/{member_id}",
+    response=WorkspaceRosterMemberSchema,
+    summary="Update a workspace member",
+)
+def patch_workspace_member(request, member_id: UUID, payload: UpdateWorkspaceMemberInput):
+    return roster_member_dict(
+        update_workspace_member(
+            user=request.auth.user,
+            member_id=member_id,
+            access_role=payload.accessRole,
+            active=payload.active,
+        )
+    )
+
+
+@router.get(
+    "/workspace/invitations",
+    response=WorkspaceInvitationList,
+    summary="Workspace invitations",
+)
+def list_workspace_invitations(request):
+    return {
+        "items": [
+            invitation_dict(invitation) for invitation in workspace_invitations(request.auth.user)
+        ]
+    }
+
+
+@router.post(
+    "/workspace/invitations",
+    response={201: WorkspaceInvitationSchema},
+    summary="Invite a workspace member",
+)
+def post_workspace_invitation(request, payload: InviteWorkspaceMemberInput):
+    invitation = invite_workspace_member(
+        user=request.auth.user,
+        email=payload.email,
+        access_role=payload.accessRole,
+        target_member_id=payload.targetMemberId,
+    )
+    return Status(201, invitation_dict(invitation))
+
+
+@router.post(
+    "/workspace/invitations/{invitation_id}/revoke",
+    response=WorkspaceInvitationSchema,
+    summary="Revoke a workspace invitation",
+)
+def post_revoke_workspace_invitation(request, invitation_id: UUID):
+    return invitation_dict(
+        revoke_workspace_invitation(user=request.auth.user, invitation_id=invitation_id)
+    )
+
+
+@router.post(
+    "/workspace/invitations/{invitation_id}/resend",
+    response=WorkspaceInvitationSchema,
+    summary="Resend a workspace invitation",
+)
+def post_resend_workspace_invitation(request, invitation_id: UUID):
+    return invitation_dict(
+        resend_workspace_invitation(user=request.auth.user, invitation_id=invitation_id)
+    )
+
+
+@router.post(
+    "/workspace/reconcile",
+    response=WorkspaceReconciliationSchema,
+    summary="Reconcile workspace membership with WorkOS",
+)
+def post_workspace_reconcile(request):
+    return reconcile_workspace(user=request.auth.user)
+
+
+@router.post(
+    "/workos/events",
+    auth=None,
+    response={200: dict},
+    summary="Receive signed WorkOS events",
+)
+def post_workos_event(request):
+    event = get_workos_directory().verify_webhook(
+        body=request.body,
+        signature=request.headers.get("WorkOS-Signature", ""),
+    )
+    processed = process_workos_event(event)
+    return {"received": True, "processed": processed}
 
 
 @router.get("/cases", response=CaseListResponse, summary="Operations cases")

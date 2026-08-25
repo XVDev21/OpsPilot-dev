@@ -288,8 +288,47 @@ export const workspaceMemberSchema = z.object({
   linkedAccount: z.boolean(),
   accessRole: z.enum(["owner", "operator", "contributor", "viewer"]),
 });
+export const workspaceRosterMemberSchema = workspaceMemberSchema.extend({
+  membershipState: z.enum(["sample", "active", "inactive"]),
+  isActive: z.boolean(),
+  workosManaged: z.boolean(),
+  joinedAt: z.string().nullable(),
+  assignedCaseCount: z.number().int().nonnegative(),
+  openTaskCount: z.number().int().nonnegative(),
+});
 export const workspaceMemberListSchema = z.object({
-  items: z.array(workspaceMemberSchema),
+  items: z.array(workspaceRosterMemberSchema),
+});
+export const workspaceSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  workosOrganizationId: z.string().nullable(),
+  collaborationState: z.enum(["personal", "provisioning", "active", "error"]),
+  accessRole: z.enum(["owner", "operator", "contributor", "viewer"]),
+  isCurrent: z.boolean(),
+});
+export const workspaceContextSchema = z.object({
+  currentWorkspaceId: z.string().uuid(),
+  items: z.array(workspaceSummarySchema),
+});
+export const workspaceInvitationSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  accessRole: z.enum(["owner", "operator", "contributor", "viewer"]),
+  state: z.enum(["pending", "accepted", "expired", "revoked", "failed"]),
+  targetMemberId: z.string().uuid().nullable(),
+  targetMemberName: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  acceptedAt: z.string().nullable(),
+  revokedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export const workspaceInvitationListSchema = z.object({
+  items: z.array(workspaceInvitationSchema),
+});
+export const workspaceReconciliationSchema = z.object({
+  memberCount: z.number().int().nonnegative(),
+  invitationCount: z.number().int().nonnegative(),
 });
 
 export const caseStatusSchema = z.enum([

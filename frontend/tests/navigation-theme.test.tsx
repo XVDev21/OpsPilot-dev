@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout/app-shell";
 import { AppModeProvider } from "@/components/providers/app-mode-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { SiteHeader } from "@/components/layout/site-header";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemeSelector } from "@/components/theme/theme-selector";
@@ -11,7 +12,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/app",
 }));
 
-vi.mock("@/app/app/actions", () => ({ signOutAction: vi.fn() }));
+vi.mock("@/app/app/actions", () => ({
+  signOutAction: vi.fn(),
+  switchWorkspaceAction: vi.fn(),
+}));
 
 const appUser = {
   id: "user_1",
@@ -26,11 +30,13 @@ const appUser = {
 describe("navigation and themes", () => {
   it("exposes only implemented app navigation", () => {
     render(
-      <AppModeProvider>
-        <AppShell user={appUser}>
-          <p>Workspace content</p>
-        </AppShell>
-      </AppModeProvider>,
+      <QueryProvider>
+        <AppModeProvider>
+          <AppShell user={appUser}>
+            <p>Workspace content</p>
+          </AppShell>
+        </AppModeProvider>
+      </QueryProvider>,
     );
     expect(screen.getAllByRole("link", { name: /Overview/i })[0]).toHaveAttribute(
       "aria-current",

@@ -24,6 +24,7 @@ import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import type { AppUser } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -183,6 +184,8 @@ export function AppShell({ children, user }: { children: ReactNode; user: AppUse
         <Link href="/" aria-label="OpsPilot AI home" className="mb-8 inline-flex rounded-xl px-1">
           <BrandLockup />
         </Link>
+        <WorkspaceSwitcher />
+        <div className="h-5" />
         <AppNavigation />
         <div className="mt-auto grid gap-4 border-t border-border pt-5">
           <ModeStatus />
@@ -203,6 +206,8 @@ export function AppShell({ children, user }: { children: ReactNode; user: AppUse
                 </Button>
               }
             >
+              <WorkspaceSwitcher compact />
+              <div className="h-5" />
               <AppNavigation mobile />
               <div className="mt-7 border-t border-border pt-5">
                 <ModeStatus />

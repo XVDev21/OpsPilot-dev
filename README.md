@@ -39,7 +39,9 @@ Outbound local connector for Ollama, LM Studio, and vLLM-compatible servers
 Encrypted per-user provider credentials
 ```
 
-The frontend and Django API are implemented. Authenticated users capture case intent and evidence,
+The frontend and Django API are implemented. WorkOS Organization-backed workspaces let owners invite
+real collaborators, assign role-scoped case access, and replace sample profiles without rewriting
+history. Authenticated users capture case intent and evidence,
 run versioned issue assessments through Gemini, OpenAI, Qwen, Bedrock, a governed compatible
 endpoint, or a paired local connector, then decide when to apply, publish, and assign the result.
 Deterministic public Demo Mode remains backend-independent. Gemini is the only platform-funded
@@ -75,7 +77,7 @@ Observable runs, local setup, and reviewed delivery handoffs are documented in
 `docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`. Operations Cases, durable assignment
 relationships, migration behavior, and deployment order are documented in
 `docs/13_OPERATIONS_CASES_AND_ASSIGNMENTS.md`.
-Case-first intake, evidence security, assessment confidence, compatibility, and the locked PR 3 plan
+Case-first intake, evidence security, assessment confidence, WorkOS collaboration, and the PR 4B plan
 are documented in `docs/14_CASE_FIRST_ASSESSMENTS_AND_EVIDENCE.md`.
 
 ## Development environment

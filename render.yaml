@@ -30,6 +30,12 @@ services:
         sync: false
       - key: WORKOS_ISSUER
         sync: false
+      - key: WORKOS_API_KEY
+        sync: false
+      - key: WORKOS_WEBHOOK_SECRET
+        sync: false
+      - key: WORKOS_INVITATION_EXPIRY_DAYS
+        value: "14"
       - key: GEMINI_API_KEY
         sync: false
       - key: PROVIDER_CREDENTIAL_ENCRYPTION_KEYS

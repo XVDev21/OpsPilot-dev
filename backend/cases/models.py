@@ -19,6 +19,12 @@ def case_update_upload_to(instance, filename: str) -> str:
 
 
 class Workspace(models.Model):
+    class CollaborationState(models.TextChoices):
+        PERSONAL = "personal", "Personal"
+        PROVISIONING = "provisioning", "Provisioning"
+        ACTIVE = "active", "Active"
+        ERROR = "error", "Error"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.OneToOneField(
         AppUser,
@@ -26,6 +32,20 @@ class Workspace(models.Model):
         related_name="personal_workspace",
     )
     name = models.CharField(max_length=120, default="Personal workspace")
+    workos_organization_id = models.CharField(
+        max_length=255,
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    collaboration_state = models.CharField(
+        max_length=16,
+        choices=CollaborationState.choices,
+        default=CollaborationState.PERSONAL,
+    )
+    collaboration_enabled_at = models.DateTimeField(blank=True, null=True)
+    collaboration_error_code = models.CharField(max_length=64, blank=True)
+    workos_synced_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -35,6 +55,11 @@ class Workspace(models.Model):
 
 
 class WorkspaceMember(models.Model):
+    class MembershipState(models.TextChoices):
+        SAMPLE = "sample", "Sample profile"
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
     class AccessRole(models.TextChoices):
         OWNER = "owner", "Owner"
         OPERATOR = "operator", "Operator"
@@ -73,6 +98,20 @@ class WorkspaceMember(models.Model):
     )
     is_sample = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    membership_state = models.CharField(
+        max_length=16,
+        choices=MembershipState.choices,
+        default=MembershipState.ACTIVE,
+    )
+    workos_membership_id = models.CharField(
+        max_length=255,
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    external_updated_at = models.DateTimeField(blank=True, null=True)
+    joined_at = models.DateTimeField(blank=True, null=True)
+    deactivated_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -91,6 +130,95 @@ class WorkspaceMember(models.Model):
             ),
         ]
         indexes = [models.Index(fields=["workspace", "is_active", "name"])]
+
+
+class WorkspaceInvitation(models.Model):
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        EXPIRED = "expired", "Expired"
+        REVOKED = "revoked", "Revoked"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    email = models.EmailField()
+    access_role = models.CharField(
+        max_length=16,
+        choices=WorkspaceMember.AccessRole.choices,
+        default=WorkspaceMember.AccessRole.CONTRIBUTOR,
+    )
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    workos_invitation_id = models.CharField(
+        max_length=255,
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    target_member = models.ForeignKey(
+        WorkspaceMember,
+        on_delete=models.SET_NULL,
+        related_name="replacement_invitations",
+        blank=True,
+        null=True,
+    )
+    invited_by = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="workspace_invitations_sent",
+        blank=True,
+        null=True,
+    )
+    accepted_user = models.ForeignKey(
+        AppUser,
+        on_delete=models.SET_NULL,
+        related_name="workspace_invitations_accepted",
+        blank=True,
+        null=True,
+    )
+    accepted_at = models.DateTimeField(blank=True, null=True)
+    revoked_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    external_updated_at = models.DateTimeField(blank=True, null=True)
+    failure_code = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "workspace_invitations"
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["workspace", "email"],
+                condition=models.Q(state="pending"),
+                name="cases_ws_pending_invite_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=["workspace", "target_member"],
+                condition=models.Q(state="pending", target_member__isnull=False),
+                name="cases_ws_pending_target_uniq",
+            ),
+        ]
+        indexes = [models.Index(fields=["workspace", "state", "-created_at"])]
+
+
+class WorkOSEventReceipt(models.Model):
+    event_id = models.CharField(max_length=255, primary_key=True)
+    event_type = models.CharField(max_length=120)
+    workos_organization_id = models.CharField(max_length=255, blank=True)
+    object_id = models.CharField(max_length=255, blank=True)
+    external_updated_at = models.DateTimeField(blank=True, null=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = "workos_event_receipts"
+        ordering = ["-received_at"]
+        indexes = [models.Index(fields=["workos_organization_id", "-received_at"])]
 
 
 class OperationsCase(models.Model):

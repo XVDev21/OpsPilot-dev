@@ -19,7 +19,11 @@ import type {
   runStatusSchema,
   workflowRunSchema,
   workspaceMemberSchema,
+  workspaceRosterMemberSchema,
   workspaceMemberListSchema,
+  workspaceContextSchema,
+  workspaceInvitationSchema,
+  workspaceInvitationListSchema,
   caseStatusSchema,
   caseDispositionSchema,
   caseIntentSchema,
@@ -56,7 +60,11 @@ export type WorkItemList = z.infer<typeof workItemListSchema>;
 export type WorkItemStatus = z.infer<typeof workItemStatusSchema>;
 export type WorkItemUpdate = z.infer<typeof updateWorkItemInputSchema>;
 export type WorkspaceMember = z.infer<typeof workspaceMemberSchema>;
+export type WorkspaceRosterMember = z.infer<typeof workspaceRosterMemberSchema>;
 export type WorkspaceMemberList = z.infer<typeof workspaceMemberListSchema>;
+export type WorkspaceContext = z.infer<typeof workspaceContextSchema>;
+export type WorkspaceInvitation = z.infer<typeof workspaceInvitationSchema>;
+export type WorkspaceInvitationList = z.infer<typeof workspaceInvitationListSchema>;
 export type CaseStatus = z.infer<typeof caseStatusSchema>;
 export type CaseDisposition = z.infer<typeof caseDispositionSchema>;
 export type CaseIntent = z.infer<typeof caseIntentSchema>;

@@ -3,7 +3,7 @@ import { TeamDirectory } from "@/features/team/team-directory";
 
 export const metadata: Metadata = {
   title: "Team",
-  description: "Review the sample operations pod used for workflow routing and ownership demos.",
+  description: "Manage workspace access, real collaborators, sample profiles, and operational workload.",
 };
 
 export default function TeamPage() {

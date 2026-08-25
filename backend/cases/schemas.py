@@ -27,6 +27,7 @@ CaseDisposition = Literal[
 ]
 CaseIntent = Literal["issue", "clarification", "enhancement"]
 CasePublicationState = Literal["draft", "published", "archived"]
+WorkspaceAccessRole = Literal["owner", "operator", "contributor", "viewer"]
 
 
 class WorkspaceMemberSchema(Schema):
@@ -43,11 +44,79 @@ class WorkspaceMemberSchema(Schema):
     tone: Literal["indigo", "cyan", "amber", "neutral"]
     isSample: bool
     linkedAccount: bool
-    accessRole: Literal["owner", "operator", "contributor", "viewer"]
+    accessRole: WorkspaceAccessRole
+
+
+class WorkspaceRosterMemberSchema(WorkspaceMemberSchema):
+    membershipState: Literal["sample", "active", "inactive"]
+    isActive: bool
+    workosManaged: bool
+    joinedAt: datetime | None
+    assignedCaseCount: int
+    openTaskCount: int
 
 
 class WorkspaceMemberList(Schema):
-    items: list[WorkspaceMemberSchema]
+    items: list[WorkspaceRosterMemberSchema]
+
+
+class WorkspaceSummarySchema(Schema):
+    id: UUID
+    name: str
+    workosOrganizationId: str | None
+    collaborationState: Literal["personal", "provisioning", "active", "error"]
+    accessRole: WorkspaceAccessRole
+    isCurrent: bool
+
+
+class WorkspaceContextSchema(Schema):
+    currentWorkspaceId: UUID
+    items: list[WorkspaceSummarySchema]
+
+
+class ActivateCollaborationInput(Schema):
+    name: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)
+    ] = None
+
+
+class WorkspaceInvitationSchema(Schema):
+    id: UUID
+    email: str
+    accessRole: WorkspaceAccessRole
+    state: Literal["pending", "accepted", "expired", "revoked", "failed"]
+    targetMemberId: UUID | None
+    targetMemberName: str | None
+    expiresAt: datetime | None
+    acceptedAt: datetime | None
+    revokedAt: datetime | None
+    createdAt: datetime
+
+
+class WorkspaceInvitationList(Schema):
+    items: list[WorkspaceInvitationSchema]
+
+
+class InviteWorkspaceMemberInput(Schema):
+    email: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=254)]
+    accessRole: Literal["operator", "contributor", "viewer"] = "contributor"
+    targetMemberId: UUID | None = None
+
+
+class UpdateWorkspaceMemberInput(Schema):
+    accessRole: Literal["operator", "contributor", "viewer"] | None = None
+    active: bool | None = None
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one membership change.")
+        return self
+
+
+class WorkspaceReconciliationSchema(Schema):
+    memberCount: int
+    invitationCount: int
 
 
 class CaseSummarySchema(Schema):

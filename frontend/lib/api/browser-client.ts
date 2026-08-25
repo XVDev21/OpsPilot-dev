@@ -13,6 +13,11 @@ import {
   runListResponseSchema,
   workflowRunSchema,
   workspaceMemberListSchema,
+  workspaceContextSchema,
+  workspaceInvitationListSchema,
+  workspaceInvitationSchema,
+  workspaceMemberSchema,
+  workspaceReconciliationSchema,
   operationsCaseListSchema,
   operationsCaseDetailSchema,
   caseEvidenceSchema,
@@ -248,6 +253,70 @@ export const browserApi = {
     return parseApiResponse(
       workspaceMemberListSchema,
       await request<unknown>("/api/backend/workspace/members"),
+    );
+  },
+  async workspaceContext() {
+    return parseApiResponse(
+      workspaceContextSchema,
+      await request<unknown>("/api/backend/workspace"),
+    );
+  },
+  async activateWorkspaceCollaboration(name?: string) {
+    return parseApiResponse(
+      workspaceContextSchema,
+      await request<unknown>("/api/backend/workspace/collaboration", {
+        method: "POST",
+        body: JSON.stringify({ name: name || null }),
+      }),
+    );
+  },
+  async listWorkspaceInvitations() {
+    return parseApiResponse(
+      workspaceInvitationListSchema,
+      await request<unknown>("/api/backend/workspace/invitations"),
+    );
+  },
+  async inviteWorkspaceMember(input: {
+    email: string;
+    accessRole: "operator" | "contributor" | "viewer";
+    targetMemberId?: string | null;
+  }) {
+    return parseApiResponse(
+      workspaceInvitationSchema,
+      await request<unknown>("/api/backend/workspace/invitations", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async updateWorkspaceMember(
+    memberId: string,
+    input: { accessRole?: "operator" | "contributor" | "viewer"; active?: boolean },
+  ) {
+    return parseApiResponse(
+      workspaceMemberSchema,
+      await request<unknown>(`/api/backend/workspace/members/${encodeURIComponent(memberId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    );
+  },
+  async revokeWorkspaceInvitation(invitationId: string) {
+    return parseApiResponse(
+      workspaceInvitationSchema,
+      await request<unknown>(`/api/backend/workspace/invitations/${encodeURIComponent(invitationId)}/revoke`, { method: "POST" }),
+    );
+  },
+  async resendWorkspaceInvitation(invitationId: string) {
+    return parseApiResponse(
+      workspaceInvitationSchema,
+      await request<unknown>(`/api/backend/workspace/invitations/${encodeURIComponent(invitationId)}/resend`, { method: "POST" }),
+    );
+  },
+  async reconcileWorkspace() {
+    return parseApiResponse(
+      workspaceReconciliationSchema,
+      await request<unknown>("/api/backend/workspace/reconcile", { method: "POST" }),
     );
   },
   async listCases(filters?: Record<string, string>) {
