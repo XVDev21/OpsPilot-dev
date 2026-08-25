@@ -92,21 +92,49 @@ def _owner_member_defaults(user: AppUser) -> dict:
         "tone": WorkspaceMember.Tone.NEUTRAL,
         "is_sample": False,
         "is_active": True,
+        "membership_state": WorkspaceMember.MembershipState.ACTIVE,
         "access_role": WorkspaceMember.AccessRole.OWNER,
     }
 
 
 @transaction.atomic
 def ensure_personal_workspace(user: AppUser) -> Workspace:
+    selected_workspace_id = getattr(user, "_opspilot_workspace_id", None)
+    if selected_workspace_id is not None:
+        workspace = Workspace.objects.filter(
+            id=selected_workspace_id,
+            members__app_user=user,
+            members__is_active=True,
+        ).first()
+        if workspace is None:
+            raise OpsPilotError(
+                code="WORKSPACE_ACCESS_DENIED",
+                message="Your account is not an active member of this workspace.",
+                status=403,
+            )
+        if (
+            getattr(user, "_opspilot_auth_context", False)
+            and not getattr(user, "_opspilot_organization_id", None)
+            and workspace.collaboration_state == Workspace.CollaborationState.ACTIVE
+        ):
+            raise OpsPilotError(
+                code="WORKSPACE_SELECTION_REQUIRED",
+                message="Select this workspace again to refresh its organization session.",
+                status=409,
+            )
+        return workspace
     workspace, _ = Workspace.objects.get_or_create(
         owner=user,
         defaults={"name": "Personal workspace"},
     )
-    WorkspaceMember.objects.update_or_create(
+    owner_member, _ = WorkspaceMember.objects.update_or_create(
         workspace=workspace,
         app_user=user,
         defaults=_owner_member_defaults(user),
     )
+    if owner_member.joined_at is None:
+        owner_member.joined_at = owner_member.created_at or timezone.now()
+        owner_member.save(update_fields=["joined_at", "updated_at"])
     for member in SAMPLE_TEAM_MEMBERS:
         sample, created = WorkspaceMember.objects.get_or_create(
             workspace=workspace,
@@ -116,6 +144,7 @@ def ensure_personal_workspace(user: AppUser) -> Workspace:
                 "app_user": None,
                 "is_sample": True,
                 "is_active": True,
+                "membership_state": WorkspaceMember.MembershipState.SAMPLE,
                 "access_role": WorkspaceMember.AccessRole.CONTRIBUTOR,
             },
         )
@@ -124,12 +153,14 @@ def ensure_personal_workspace(user: AppUser) -> Workspace:
                 setattr(sample, field, value)
             sample.is_sample = True
             sample.is_active = True
+            sample.membership_state = WorkspaceMember.MembershipState.SAMPLE
             sample.access_role = WorkspaceMember.AccessRole.CONTRIBUTOR
             sample.save(
                 update_fields=[
                     *member.keys(),
                     "is_sample",
                     "is_active",
+                    "membership_state",
                     "access_role",
                     "updated_at",
                 ]

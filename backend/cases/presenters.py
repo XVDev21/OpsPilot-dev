@@ -1,4 +1,4 @@
-from cases.models import OperationsCase, WorkspaceMember
+from cases.models import OperationsCase, WorkspaceInvitation, WorkspaceMember
 
 
 def member_dict(member: WorkspaceMember | None) -> dict | None:
@@ -19,6 +19,44 @@ def member_dict(member: WorkspaceMember | None) -> dict | None:
         "isSample": member.is_sample,
         "linkedAccount": member.app_user_id is not None,
         "accessRole": member.access_role,
+    }
+
+
+def roster_member_dict(member: WorkspaceMember) -> dict:
+    data = member_dict(member)
+    assigned_case_count = getattr(member, "assigned_case_count", None)
+    if assigned_case_count is None:
+        assigned_case_count = member.case_assignments.exclude(
+            case__status__in=[OperationsCase.Status.RESOLVED, OperationsCase.Status.CLOSED]
+        ).count()
+    open_task_count = getattr(member, "open_task_count", None)
+    if open_task_count is None:
+        open_task_count = member.work_items.exclude(status="done").count()
+    data.update(
+        {
+            "membershipState": member.membership_state,
+            "isActive": member.is_active,
+            "workosManaged": bool(member.workos_membership_id),
+            "joinedAt": member.joined_at,
+            "assignedCaseCount": assigned_case_count,
+            "openTaskCount": open_task_count,
+        }
+    )
+    return data
+
+
+def invitation_dict(invitation: WorkspaceInvitation) -> dict:
+    return {
+        "id": invitation.id,
+        "email": invitation.email,
+        "accessRole": invitation.access_role,
+        "state": invitation.state,
+        "targetMemberId": invitation.target_member_id,
+        "targetMemberName": invitation.target_member.name if invitation.target_member else None,
+        "expiresAt": invitation.expires_at,
+        "acceptedAt": invitation.accepted_at,
+        "revokedAt": invitation.revoked_at,
+        "createdAt": invitation.created_at,
     }
 
 

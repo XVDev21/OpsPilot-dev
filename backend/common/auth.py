@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 class WorkOSPrincipal:
     user: AppUser
     claims: Mapping[str, Any]
+    workspace_id: str
+    organization_id: str | None
 
 
 class WorkOSTokenVerifier:
@@ -104,7 +106,16 @@ class WorkOSBearer(HttpBearer):
             ) from exc
 
         user = get_or_sync_app_user(claims)
-        principal = WorkOSPrincipal(user=user, claims=claims)
+        from cases.collaboration import bind_authenticated_workspace
+
+        workspace = bind_authenticated_workspace(user, claims)
+        organization_id = claims.get("org_id")
+        principal = WorkOSPrincipal(
+            user=user,
+            claims=claims,
+            workspace_id=str(workspace.id),
+            organization_id=organization_id if isinstance(organization_id, str) else None,
+        )
         request.app_user = user
         request.workos_claims = claims
         return principal

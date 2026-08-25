@@ -147,29 +147,47 @@ delivery with the verification record preserved.
 Sample members remain clearly fictional database records. They may be assigned, but they cannot sign
 in, author updates, receive notifications, or generate simulated activity.
 
-## Locked PR 4 plan — real workspace participation and notifications
+## Implemented PR 4A — WorkOS workspace participation
 
-PR 4 should make collaboration real for invited people before adding broad third-party automation:
+PR 4A makes the existing case collaboration model usable by real invited people:
 
-1. introduce workspace invitation and membership lifecycle APIs using WorkOS identities, including
-   pending, active, suspended, and removed states;
-2. allow an owner to replace or link a sample profile to an invited real member without rewriting
-   historical assignments or case events;
-3. add role management for owner, operator, contributor, and viewer with last-owner and self-removal
-   safety rules;
-4. add default-on email preferences at workspace and personal levels, with per-event controls for
+1. each local `Workspace` may lazily provision and permanently bind one WorkOS Organization;
+2. authenticated organization claims must match that binding before a user can read workspace data;
+3. owners can send, resend, and revoke WorkOS invitations and inspect pending, accepted, expired,
+   revoked, or failed lifecycle state without OpsPilot storing invitation tokens;
+4. signed WorkOS webhooks are idempotently consumed, and a manual directory reconciliation path
+   repairs missed membership or invitation updates;
+5. WorkOS membership lifecycle is mapped to active/inactive local records while owner, operator,
+   contributor, and viewer authorization remains server-owned by OpsPilot;
+6. replacing a fictional sample profile links the real account to the existing `WorkspaceMember` ID,
+   preserving assignment and case history; pending replacement targets are exclusive at the database
+   boundary and revalidated under a row lock before identity binding;
+7. last-owner protection prevents an owner from demoting or removing the workspace's authority root;
+8. the application shell includes an organization-backed workspace switcher, and Team is a responsive
+   access-and-workload control plane rather than a static sample roster;
+9. public Demo Mode still renders a deterministic, clearly fictional sample team with no live API or
+   WorkOS dependency;
+10. webhook receipt processing is serialized inside the lifecycle transaction so concurrent duplicate
+    deliveries cannot apply the same external transition twice.
+
+The backend needs `WORKOS_API_KEY` for directory operations and `WORKOS_WEBHOOK_SECRET` for signed
+events. No Slack, Pumble, Linear, notification, or provider secret is required for this PR.
+
+## Locked PR 4B plan — notification delivery
+
+The next PR should add notification delivery without mixing connector scope into identity work:
+
+1. add default-on email preferences at workspace and personal levels, with per-event controls for
    assignment, blocker, mention, resolution, verification, and due-date changes;
-5. consume `CaseDomainEvent` through an idempotent outbox dispatcher with retries, terminal failure
+2. consume `CaseDomainEvent` through an idempotent outbox dispatcher with retries, terminal failure
    state, and delivery audit records;
-6. ship transactional assignment, blocker, and verification email templates plus authenticated deep
+3. ship transactional assignment, blocker, and verification email templates plus authenticated deep
    links and unsubscribe/preference management;
-7. add a Connections surface that reserves provider-neutral Slack, Pumble, and Linear destinations,
-   scopes, and delivery policy without allowing AI to send or create external work autonomously;
-8. keep all external delivery behind a human preview/confirm action and preserve external message or
-   issue identifiers on the case timeline for retry-safe linking;
-9. add integration, permission, retry, email-preference, accessibility, responsive-browser, and
-   security regression coverage before deployment.
+4. add an in-product notification inbox, unread state, bulk mark-read, and relevant case deep links;
+5. keep external delivery human-controlled and audit every notification decision;
+6. add permission, retry, preference, accessibility, responsive-browser, and security regression
+   coverage before deployment.
 
-Slack, Pumble, and Linear OAuth/API implementations may be delivered in the following connector PR
-once their app registrations and production redirect URLs exist. PR 4 must leave the schema and UI
-ready for those connectors without requiring their credentials to merge.
+Slack, Pumble, and Linear remain PR 5 connectors once their app registrations and production redirect
+URLs exist. Their delivery adapters should consume the same domain-event/outbox seam established in
+PR 4B and must preserve external identifiers for retry-safe linking.

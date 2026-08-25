@@ -2,7 +2,7 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** Case delivery collaboration + Work Status
+**Current milestone:** WorkOS workspace participation (PR 4A)
 **Status:** Implementation complete; release gates passed; draft PR ready
 
 ## Milestones
@@ -20,8 +20,51 @@
 - [x] Operations Cases, durable personal workspaces, and real member assignments
 - [x] Case-first intake, private multimodal evidence, and confidence-based assessments
 - [x] Advisory-backed publication, case delivery updates, tasks, and Work Status
+- [x] WorkOS Organization-backed workspace participation and real member invitations
 - [ ] End-to-end integration
 - [x] Deployment
+
+## WorkOS workspace participation
+
+- [x] lazily provision and permanently bind one WorkOS Organization to each collaboration-enabled
+  workspace without changing personal Demo Mode
+- [x] require verified organization claims to match the selected local workspace before returning
+  workspace, member, invitation, case, evidence, task, or update data
+- [x] add owner-controlled invitation, resend, revoke, role, deactivation, and directory-reconciliation
+  operations with recoverable external-service failure states
+- [x] preserve assignment and case history when a real invitee replaces a clearly fictional sample
+  profile, with exclusive pending reservations and acceptance-time identity revalidation
+- [x] map WorkOS membership lifecycle to active and inactive local members while keeping OpsPilot's
+  owner, operator, contributor, and viewer permissions server-owned
+- [x] consume signed WorkOS invitation and organization-membership events idempotently without storing
+  raw webhook bodies, access tokens, invitation tokens, or provider credentials
+- [x] serialize webhook receipt processing so concurrent duplicate delivery cannot apply a lifecycle
+  transition twice; retain manual reconciliation for missed or delayed events
+- [x] add a responsive organization workspace switcher and rebuild Team as a live access, invitation,
+  workload, and sample-replacement control plane
+- [x] keep the deterministic public Demo team isolated from WorkOS and live backend state
+- [x] document Render/Vercel variables, webhook registration, deployment order, smoke tests, and the
+  locked PR 4B notification-delivery boundary
+
+```text
+backend Ruff            PASS - format and lint
+migration consistency   PASS - no model changes missing migrations
+Django checks           PASS - local and production deployment checks
+backend dependencies    PASS - pip check found no broken requirements
+backend tests           PASS - 137 tests, 90.41% branch coverage
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 20 files, 54 tests
+frontend build          PASS - Next.js 16.3.1, 38 generated pages
+browser verification    PASS - Demo Team at desktop light and mobile dark with responsive layout,
+                          zero visible overflow or framework errors; protected Team behavior and BFF
+                          routes covered by tests because this clean C: worktree has no ignored local
+                          WorkOS callback/session configuration
+security diff scan      PASS AFTER HARDENING - all 31 changed runtime/contract files reviewed; one
+                          low-severity sample-identity reservation issue reproduced, fixed at the
+                          database and consumption boundaries, and regression-tested; concurrent
+                          webhook receipt processing also serialized
+```
 
 ## Case delivery collaboration and Work Status
 

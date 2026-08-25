@@ -14,7 +14,13 @@
       "tone": "indigo",
       "isSample": true,
       "linkedAccount": false,
-      "accessRole": "contributor"
+      "accessRole": "contributor",
+      "membershipState": "sample",
+      "isActive": true,
+      "workosManaged": false,
+      "joinedAt": null,
+      "assignedCaseCount": 0,
+      "openTaskCount": 0
     }
   ]
 }

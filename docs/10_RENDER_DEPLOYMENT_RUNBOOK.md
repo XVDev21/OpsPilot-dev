@@ -27,7 +27,9 @@ API service secrets:
 
 ```text
 WORKOS_CLIENT_ID
+WORKOS_API_KEY
 WORKOS_ISSUER=<exact issuer for the WorkOS environment>
+WORKOS_WEBHOOK_SECRET=<signing secret for the OpsPilot webhook endpoint>
 GEMINI_API_KEY
 AI_PLATFORM_PROVIDERS=gemini
 FRONTEND_ORIGIN
@@ -85,16 +87,40 @@ Logout URI: https://<opspilot-vercel-host>/
 
 Keep `http://localhost:3000/auth/callback` as a separate local redirect URI.
 
+## WorkOS collaboration webhook
+
+After the backend containing workspace collaboration is deployed, create a WorkOS webhook endpoint:
+
+```text
+https://<opspilot-api-host>/api/v1/workos/events
+```
+
+Subscribe it to invitation and organization-membership lifecycle events, then copy that endpoint's
+signing secret into Render as `WORKOS_WEBHOOK_SECRET`. The endpoint verifies `WorkOS-Signature`
+against the untouched request body, records only idempotency metadata, rejects unsigned payloads,
+and never stores invitation tokens or raw event bodies. Use **Sync directory** on the Team page as a
+manual reconciliation path after an outage; webhooks remain the normal low-latency path.
+
+The backend also requires `WORKOS_API_KEY` for organization provisioning, invitations, membership
+deactivation, and reconciliation. This is separate from the frontend's server-only WorkOS API key
+even when both deployments use the same WorkOS environment.
+
 ## Release smoke
 
 1. Confirm `GET https://<api-host>/api/v1/health` returns healthy after any cold start.
 2. Open the Vercel frontend, sign in with Google, and confirm the personal workspace loads.
-3. Run one Efficient Gemini workflow and verify token usage and history.
-4. Run OpenAI only if the signed-in user connected a funded personal API key; it is not a release gate.
-5. In Settings, save a disposable personal credential, confirm its masked fingerprint, run its
+3. Open Team, enable collaboration, and confirm the browser returns in the newly selected WorkOS
+   Organization session.
+4. Invite an alternate email, accept from a separate browser profile, and confirm the member can
+   open published cases but cannot see another user's private drafts.
+5. Change the invited member's role, replace one sample profile, and confirm earlier assignments
+   remain attached to the same member history.
+6. Run one Efficient Gemini workflow and verify token usage and history.
+7. Run OpenAI only if the signed-in user connected a funded personal API key; it is not a release gate.
+8. In Settings, save a disposable personal credential, confirm its masked fingerprint, run its
    provider, then delete the credential and confirm workspace fallback/unavailable status.
-6. Run Qwen only after selecting the API-key region and, for Singapore or Beijing, its Model Studio
+9. Run Qwen only after selecting the API-key region and, for Singapore or Beijing, its Model Studio
    workspace ID.
-7. Verify history, credential source, run detail, manual run deletion, and cross-account isolation.
-8. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
-9. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.
+10. Verify history, credential source, run detail, manual run deletion, and cross-account isolation.
+11. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
+12. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.
