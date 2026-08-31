@@ -71,7 +71,12 @@ NEXT_PUBLIC_WORKOS_REDIRECT_URI
 ```
 
 Only `NEXT_PUBLIC_*` values are exposed to the browser. Provider keys remain backend-only, and WorkOS
-server secrets remain server-only.
+server secrets remain server-only. `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, provider credentials,
+and `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` belong only on Render; never duplicate them into Vercel.
+
+Keep the WorkOS variables scoped to Production unless a separately isolated WorkOS environment is
+available for Preview deployments. Reusing production AuthKit secrets in arbitrary pull-request
+previews broadens the credential boundary and is not required for Vercel to run its build checks.
 
 ## First-deploy URL sequence
 
@@ -132,3 +137,7 @@ even when both deployments use the same WorkOS environment.
 10. Verify history, credential source, run detail, manual run deletion, and cross-account isolation.
 11. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
 12. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.
+13. Disable one personal email event after a delivery has been queued and confirm the outbox records
+    it as suppressed without contacting Resend; then restore the preference.
+14. In Resend test mode, deliver a signed webhook before the matching provider message ID is stored
+    and confirm the pending receipt reconciles after the send record is committed.

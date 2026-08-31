@@ -178,6 +178,115 @@ def test_preferences_support_inheritance_owner_defaults_and_member_opt_out(
         )
 
 
+@override_settings(RESEND_API_KEY="re_test")
+def test_preference_changes_suppress_queued_delivery_before_resend(
+    authenticated_client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    owner = _authenticate(authenticated_client)
+    recipient_user, recipient = _real_member(owner)
+    case = _case(owner)
+    event = CaseDomainEvent.objects.create(
+        case=case,
+        actor=owner,
+        event_type="case.assignment.changed",
+        payload={"toMemberId": str(recipient.id)},
+    )
+    dispatch_domain_event(event.id)
+    delivery = NotificationDelivery.objects.get()
+    delivery.status = NotificationDelivery.Status.RETRY
+    delivery.attempt_count = 1
+    delivery.save(update_fields=["status", "attempt_count"])
+    NotificationDeliveryAttempt.objects.create(
+        delivery=delivery,
+        attempt_number=1,
+        outcome="retry",
+    )
+    send_calls = 0
+
+    def send(params, options):
+        nonlocal send_calls
+        send_calls += 1
+        return {"id": "must_not_send"}
+
+    monkeypatch.setattr("cases.notifications.resend.Emails.send", send)
+    update_notification_preferences(
+        user=recipient_user,
+        email_enabled=False,
+        event_overrides={},
+    )
+
+    delivery.refresh_from_db()
+    assert delivery.status == NotificationDelivery.Status.SUPPRESSED
+    assert delivery.last_error_code == "notification_preference_disabled"
+    assert delivery.attempt_count == 2
+    assert delivery.attempts.get(attempt_number=2).outcome == "suppressed"
+    assert opportunistic_dispatch(limit=1) == 0
+    assert send_calls == 0
+
+
+@override_settings(RESEND_API_KEY="re_test")
+def test_send_time_recipient_recheck_suppresses_inactive_member(
+    authenticated_client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    owner = _authenticate(authenticated_client)
+    _, recipient = _real_member(owner)
+    case = _case(owner)
+    event = CaseDomainEvent.objects.create(
+        case=case,
+        actor=owner,
+        event_type="case.assignment.changed",
+        payload={"toMemberId": str(recipient.id)},
+    )
+    dispatch_domain_event(event.id)
+    recipient.is_active = False
+    recipient.save(update_fields=["is_active"])
+    send_calls = 0
+
+    def send(params, options):
+        nonlocal send_calls
+        send_calls += 1
+        return {"id": "must_not_send"}
+
+    monkeypatch.setattr("cases.notifications.resend.Emails.send", send)
+    assert opportunistic_dispatch(limit=1) == 1
+
+    delivery = NotificationDelivery.objects.get()
+    assert delivery.status == NotificationDelivery.Status.SUPPRESSED
+    assert delivery.last_error_code == "recipient_ineligible"
+    assert delivery.attempts.get().outcome == "suppressed"
+    assert send_calls == 0
+
+
+def test_workspace_email_disable_suppresses_every_queued_member_delivery(
+    authenticated_client: Client,
+) -> None:
+    owner = _authenticate(authenticated_client)
+    recipients = [_real_member(owner, key=f"recipient-{index}")[1] for index in range(2)]
+    case = _case(owner)
+    for recipient in recipients:
+        event = CaseDomainEvent.objects.create(
+            case=case,
+            actor=owner,
+            event_type="case.assignment.changed",
+            payload={"toMemberId": str(recipient.id)},
+        )
+        dispatch_domain_event(event.id)
+
+    update_notification_preferences(
+        user=owner,
+        email_enabled=None,
+        event_overrides={},
+        workspace_defaults={"email_enabled": False},
+    )
+
+    assert NotificationDelivery.objects.count() == 2
+    assert set(NotificationDelivery.objects.values_list("status", flat=True)) == {
+        NotificationDelivery.Status.SUPPRESSED
+    }
+
+
 def test_notification_api_contract_and_read_state(authenticated_client: Client) -> None:
     owner = _authenticate(authenticated_client)
     response = authenticated_client.get("/api/v1/notification-preferences")
@@ -287,6 +396,59 @@ def test_resend_send_retry_and_webhook_reconciliation(
     retry_delivery = NotificationDelivery.objects.get(notification__event=retry_event)
     assert retry_delivery.status == NotificationDelivery.Status.RETRY
     assert retry_delivery.attempts.get().outcome == "retry"
+
+
+@override_settings(
+    RESEND_API_KEY="re_test",
+    RESEND_WEBHOOK_SECRET="whsec_test",
+    FRONTEND_ORIGIN="https://opspilot.example",
+)
+def test_early_resend_webhook_is_reconciled_after_provider_id_is_saved(
+    authenticated_client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    owner = _authenticate(authenticated_client)
+    _, recipient = _real_member(owner)
+    case = _case(owner)
+    event = CaseDomainEvent.objects.create(
+        case=case,
+        actor=owner,
+        event_type="case.assignment.changed",
+        payload={"toMemberId": str(recipient.id)},
+    )
+    dispatch_domain_event(event.id)
+    headers = {
+        "svix-id": "webhook_arrived_first",
+        "svix-timestamp": "1787700000",
+        "svix-signature": "v1,test",
+    }
+    monkeypatch.setattr(
+        "cases.notifications.resend.Webhooks.verify",
+        lambda options: {
+            "type": "email.delivered",
+            "data": {"email_id": "email_arrived_first"},
+        },
+    )
+
+    assert process_resend_webhook(payload=b"{}", headers=headers) is True
+    receipt = ResendWebhookReceipt.objects.get(event_id="webhook_arrived_first")
+    assert receipt.processed_at is None
+    assert process_resend_webhook(payload=b"{}", headers=headers) is False
+    receipt.refresh_from_db()
+    assert receipt.processed_at is None
+
+    monkeypatch.setattr(
+        "cases.notifications.resend.Emails.send",
+        lambda params, options: {"id": "email_arrived_first"},
+    )
+    assert opportunistic_dispatch(limit=1) == 1
+
+    delivery = NotificationDelivery.objects.get()
+    delivery.refresh_from_db()
+    receipt.refresh_from_db()
+    assert delivery.status == NotificationDelivery.Status.DELIVERED
+    assert delivery.delivered_at is not None
+    assert receipt.processed_at is not None
 
 
 def test_structured_mentions_and_due_date_events(authenticated_client: Client) -> None:

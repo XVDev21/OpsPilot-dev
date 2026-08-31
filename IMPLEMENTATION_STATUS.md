@@ -3,7 +3,7 @@
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
 **Current milestone:** Case notification delivery (PR 4B)
-**Status:** Implementation complete; release verification in progress
+**Status:** Implementation and release verification complete; draft PR preparation in progress
 
 ## Milestones
 
@@ -40,21 +40,37 @@
   bounded retry state, leases, attempt history, and provider message identifiers
 - [x] reconcile delivered, bounced, failed, complained, and suppressed states through signed,
   idempotent Resend webhooks without retaining raw webhook bodies
+- [x] enforce the latest workspace policy, personal opt-out, real-member state, and recipient email
+  again under database locks immediately before each external send; pending and retry deliveries are
+  suppressed as soon as a relevant preference changes
+- [x] retain valid Resend webhooks that arrive before the provider message ID is committed, reconcile
+  them after send persistence, and apply monotonic terminal-state precedence across duplicate or
+  out-of-order delivery events
 - [x] keep the approved hobby topology free of Render Cron, worker, Redis, and Key Value charges by
   combining post-commit attempts, bounded inbox-triggered retry draining, and a manual dispatcher
 - [x] preserve a clean future worker/scheduler seam while documenting that retries are not time-bound
   when the Render Free web service is asleep
 
 ```text
-backend Ruff            PASS - format and lint
+backend Ruff            PASS - format and lint, Ruff 0.16.4
 migration consistency   PASS - notification defaults backfilled for existing real members
-Django checks           PASS - local checks
-backend tests           PASS - 151 tests, 91.00% branch coverage
-frontend lint           PENDING FINAL GATE
-frontend typecheck      PENDING FINAL GATE
+Django checks           PASS - local and production deployment checks
+backend dependencies    PASS - pip check and pip-audit; no known vulnerabilities
+backend tests           PASS - 155 tests, 90.83% branch coverage
+frontend dependencies   PASS - npm audit; zero known vulnerabilities
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
 frontend tests          PASS - 22 files, 58 tests
-frontend build          PENDING FINAL GATE
-browser verification    PENDING FINAL GATE
+frontend build          PASS - Next.js 16.3.1, Node 24.19.0, 42 generated routes
+browser verification    PASS - desktop light, mobile dark, system/reduced-motion behavior, no
+                          horizontal overflow or framework overlay, and zero automated WCAG A/AA
+                          violations on the public Demo surface; authenticated notification UI and
+                          BFF behavior covered by tests because local browser verification used
+                          intentionally invalid WorkOS placeholders
+Vercel environment      PASS - all six frontend/AuthKit variables present in Production; public
+                          API/site/callback values match the Render and Vercel deployment contract,
+                          while sensitive WorkOS values remain protected and Render-only provider
+                          secrets remain excluded
 security diff scan      PENDING FINAL GATE
 ```
 

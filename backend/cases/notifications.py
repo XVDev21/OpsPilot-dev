@@ -43,6 +43,15 @@ TERMINAL_DELIVERY_STATUSES = {
     NotificationDelivery.Status.FAILED,
     NotificationDelivery.Status.SUPPRESSED,
 }
+DELIVERY_STATUS_PRECEDENCE = {
+    NotificationDelivery.Status.PENDING: 0,
+    NotificationDelivery.Status.SENDING: 0,
+    NotificationDelivery.Status.RETRY: 0,
+    NotificationDelivery.Status.SENT: 0,
+    NotificationDelivery.Status.DELIVERED: 1,
+    NotificationDelivery.Status.FAILED: 2,
+    NotificationDelivery.Status.SUPPRESSED: 3,
+}
 
 
 def ensure_notification_defaults(*, member: WorkspaceMember) -> None:
@@ -107,6 +116,10 @@ def update_notification_preferences(
                 policy_fields.append(field)
         if policy_fields:
             policy.save(update_fields=[*policy_fields, "updated_at"])
+    _suppress_disallowed_deliveries(
+        workspace_id=workspace.id if workspace_defaults is not None else None,
+        member_id=None if workspace_defaults is not None else member.id,
+    )
     return _preference_payload(
         policy=policy,
         preference=preference,
@@ -357,6 +370,99 @@ def _email_allowed(member: WorkspaceMember, preference_field: str) -> bool:
     )
 
 
+def _delivery_permission(delivery: NotificationDelivery) -> tuple[bool, str]:
+    notification = delivery.notification
+    member = notification.recipient
+    if (
+        member.workspace_id != notification.workspace_id
+        or member.workspace_id != notification.case.workspace_id
+        or not member.app_user_id
+        or member.is_sample
+        or not member.is_active
+        or member.membership_state != WorkspaceMember.MembershipState.ACTIVE
+    ):
+        return False, "recipient_ineligible"
+    spec = EVENT_POLICY_FIELDS.get(notification.event.event_type)
+    if spec is None or spec[1] is None:
+        return False, "event_is_in_app_only"
+    current_email = member.email or (member.app_user.email if member.app_user else None)
+    if not current_email:
+        return False, "recipient_email_unavailable"
+    if current_email.casefold() != delivery.recipient_email.casefold():
+        return False, "recipient_email_changed"
+    if not _email_allowed(member, spec[1]):
+        return False, "notification_preference_disabled"
+    return True, ""
+
+
+def _suppress_delivery_locked(*, delivery: NotificationDelivery, reason: str) -> None:
+    if delivery.status in TERMINAL_DELIVERY_STATUSES:
+        return
+    attempt_number = delivery.attempt_count
+    if (
+        attempt_number == 0
+        or NotificationDeliveryAttempt.objects.filter(
+            delivery=delivery,
+            attempt_number=attempt_number,
+        ).exists()
+    ):
+        attempt_number += 1
+        delivery.attempt_count = attempt_number
+    delivery.status = NotificationDelivery.Status.SUPPRESSED
+    delivery.lease_expires_at = None
+    delivery.last_error_code = reason[:80]
+    delivery.last_error_message = "Email delivery was suppressed by the current recipient policy."
+    delivery.save(
+        update_fields=[
+            "status",
+            "attempt_count",
+            "lease_expires_at",
+            "last_error_code",
+            "last_error_message",
+            "updated_at",
+        ]
+    )
+    NotificationDeliveryAttempt.objects.create(
+        delivery=delivery,
+        attempt_number=attempt_number,
+        outcome="suppressed",
+        error_code=delivery.last_error_code,
+        error_message=delivery.last_error_message,
+    )
+
+
+def _suppress_disallowed_deliveries(
+    *,
+    workspace_id: UUID | None,
+    member_id: UUID | None,
+) -> int:
+    candidates = NotificationDelivery.objects.filter(
+        status__in=[
+            NotificationDelivery.Status.PENDING,
+            NotificationDelivery.Status.RETRY,
+            NotificationDelivery.Status.SENDING,
+        ]
+    )
+    if workspace_id is not None:
+        candidates = candidates.filter(notification__workspace_id=workspace_id)
+    if member_id is not None:
+        candidates = candidates.filter(notification__recipient_id=member_id)
+    candidates = candidates.select_for_update().select_related(
+        "notification__case",
+        "notification__event",
+        "notification__recipient__app_user",
+        "notification__recipient__workspace",
+    )
+    suppressed = 0
+    for delivery in candidates:
+        allowed, reason = _delivery_permission(delivery)
+        if allowed:
+            continue
+        _suppress_delivery_locked(delivery=delivery, reason=reason)
+        suppressed += 1
+    return suppressed
+
+
 def opportunistic_dispatch(*, limit: int) -> int:
     if not settings.RESEND_API_KEY or limit <= 0:
         return 0
@@ -392,10 +498,33 @@ def _claim_delivery() -> NotificationDelivery | None:
     return delivery
 
 
+@transaction.atomic
 def _send_delivery(delivery_id: UUID) -> None:
-    delivery = NotificationDelivery.objects.select_related(
-        "notification__case", "notification__recipient"
-    ).get(id=delivery_id)
+    delivery_snapshot = NotificationDelivery.objects.select_related("notification__recipient").get(
+        id=delivery_id
+    )
+    WorkspaceNotificationPolicy.objects.select_for_update().get_or_create(
+        workspace_id=delivery_snapshot.notification.recipient.workspace_id
+    )
+    MemberNotificationPreference.objects.select_for_update().get_or_create(
+        member_id=delivery_snapshot.notification.recipient_id
+    )
+    delivery = (
+        NotificationDelivery.objects.select_for_update()
+        .select_related(
+            "notification__case",
+            "notification__event",
+            "notification__recipient__app_user",
+            "notification__recipient__workspace",
+        )
+        .get(id=delivery_id)
+    )
+    if delivery.status != NotificationDelivery.Status.SENDING:
+        return
+    allowed, reason = _delivery_permission(delivery)
+    if not allowed:
+        _suppress_delivery_locked(delivery=delivery, reason=reason)
+        return
     notification = delivery.notification
     case_url = f"{settings.FRONTEND_ORIGIN}{notification.action_path}"
     params: resend.Emails.SendParams = {
@@ -415,14 +544,22 @@ def _send_delivery(delivery_id: UUID) -> None:
         _record_delivery_failure(delivery_id=delivery.id, error=error)
         return
     now = timezone.now()
-    NotificationDelivery.objects.filter(id=delivery.id).update(
-        status=NotificationDelivery.Status.SENT,
-        provider_message_id=provider_message_id,
-        sent_at=now,
-        lease_expires_at=None,
-        last_error_code="",
-        last_error_message="",
-        updated_at=now,
+    delivery.status = NotificationDelivery.Status.SENT
+    delivery.provider_message_id = provider_message_id
+    delivery.sent_at = now
+    delivery.lease_expires_at = None
+    delivery.last_error_code = ""
+    delivery.last_error_message = ""
+    delivery.save(
+        update_fields=[
+            "status",
+            "provider_message_id",
+            "sent_at",
+            "lease_expires_at",
+            "last_error_code",
+            "last_error_message",
+            "updated_at",
+        ]
     )
     NotificationDeliveryAttempt.objects.create(
         delivery_id=delivery.id,
@@ -430,6 +567,7 @@ def _send_delivery(delivery_id: UUID) -> None:
         outcome="sent",
         provider_message_id=provider_message_id,
     )
+    _reconcile_resend_receipts_for_delivery(delivery=delivery)
 
 
 def _email_html(*, notification: Notification, case_url: str) -> str:
@@ -517,35 +655,59 @@ def process_resend_webhook(*, payload: bytes, headers: dict[str, str]) -> bool:
     event_type = str(event.get("type", ""))
     data = event.get("data") or {}
     message_id = str(data.get("email_id") or data.get("id") or "")
-    receipt, created = ResendWebhookReceipt.objects.get_or_create(
+    if not event_id or not message_id:
+        raise OpsPilotError(
+            code="INVALID_RESEND_EVENT",
+            message="The Resend event did not include its required identifiers.",
+            status=400,
+        )
+    _, created = ResendWebhookReceipt.objects.get_or_create(
         event_id=event_id,
         defaults={"event_type": event_type, "provider_message_id": message_id},
     )
-    if not created:
-        return False
     delivery = (
         NotificationDelivery.objects.select_for_update()
         .filter(provider_message_id=message_id)
         .first()
     )
     if delivery is not None:
-        now = timezone.now()
-        if event_type == "email.delivered" and delivery.status not in {
-            NotificationDelivery.Status.FAILED,
-            NotificationDelivery.Status.SUPPRESSED,
-        }:
-            delivery.status = NotificationDelivery.Status.DELIVERED
-            delivery.delivered_at = now
-        elif event_type in {"email.complained", "email.suppressed"}:
-            delivery.status = NotificationDelivery.Status.SUPPRESSED
-        elif event_type in {"email.bounced", "email.failed"} and delivery.status != (
-            NotificationDelivery.Status.SUPPRESSED
-        ):
-            delivery.status = NotificationDelivery.Status.FAILED
-        delivery.save(update_fields=["status", "delivered_at", "updated_at"])
-    receipt.processed_at = timezone.now()
-    receipt.save(update_fields=["processed_at"])
-    return True
+        _reconcile_resend_receipts_for_delivery(delivery=delivery)
+    return created
+
+
+def _reconcile_resend_receipts_for_delivery(*, delivery: NotificationDelivery) -> int:
+    if not delivery.provider_message_id:
+        return 0
+    receipts = ResendWebhookReceipt.objects.select_for_update().filter(
+        provider_message_id=delivery.provider_message_id,
+        processed_at__isnull=True,
+    )
+    processed = 0
+    for receipt in receipts.order_by("received_at", "event_id"):
+        _apply_resend_event(delivery=delivery, event_type=receipt.event_type)
+        receipt.processed_at = timezone.now()
+        receipt.save(update_fields=["processed_at"])
+        processed += 1
+    return processed
+
+
+def _apply_resend_event(*, delivery: NotificationDelivery, event_type: str) -> None:
+    target_status = {
+        "email.delivered": NotificationDelivery.Status.DELIVERED,
+        "email.bounced": NotificationDelivery.Status.FAILED,
+        "email.failed": NotificationDelivery.Status.FAILED,
+        "email.complained": NotificationDelivery.Status.SUPPRESSED,
+        "email.suppressed": NotificationDelivery.Status.SUPPRESSED,
+    }.get(event_type)
+    if target_status is None:
+        return
+    if DELIVERY_STATUS_PRECEDENCE[target_status] <= DELIVERY_STATUS_PRECEDENCE[delivery.status]:
+        return
+    delivery.status = target_status
+    if target_status == NotificationDelivery.Status.DELIVERED:
+        delivery.delivered_at = timezone.now()
+    delivery.lease_expires_at = None
+    delivery.save(update_fields=["status", "delivered_at", "lease_expires_at", "updated_at"])
 
 
 def safe_dispatch_domain_event(event_id: UUID) -> None:
