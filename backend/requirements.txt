@@ -10,7 +10,7 @@ django-storages==1.14.6
 google-genai==2.18.1
 gunicorn==26.2.0
 httpx==0.28.1
-openai==3.3.0
+openai==3.5.0
 psycopg[binary]==3.3.4
 python-dotenv==1.2.3
 workos==10.2.0
