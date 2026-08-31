@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** WorkOS workspace participation (PR 4A)
-**Status:** Implementation complete; release gates passed; draft PR ready
+**Current milestone:** Case notification delivery (PR 4B)
+**Status:** Implementation complete; release verification in progress
 
 ## Milestones
 
@@ -21,8 +21,42 @@
 - [x] Case-first intake, private multimodal evidence, and confidence-based assessments
 - [x] Advisory-backed publication, case delivery updates, tasks, and Work Status
 - [x] WorkOS Organization-backed workspace participation and real member invitations
+- [x] Resend-backed case email, durable delivery outbox, and authenticated notification inbox
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Case notification delivery
+
+- [x] provision default-on workspace notification policy and personal member preferences for every
+  real account while excluding sample profiles from all delivery
+- [x] route assignment, blocker, mention, resolution, verification, due-date, and publication signals
+  from durable `CaseDomainEvent` records into recipient-specific in-app notifications
+- [x] add explicit structured mentions for active real workspace members to append-only Case Updates
+- [x] add an authenticated notification inbox, unread counter, bulk mark-read, case deep links, and
+  responsive desktop/mobile notification center
+- [x] expose personal email opt-out and per-event controls in Settings, with owner-managed workspace
+  defaults that never override an individual opt-out
+- [x] deliver privacy-minimized transactional email through Resend with deterministic idempotency,
+  bounded retry state, leases, attempt history, and provider message identifiers
+- [x] reconcile delivered, bounced, failed, complained, and suppressed states through signed,
+  idempotent Resend webhooks without retaining raw webhook bodies
+- [x] keep the approved hobby topology free of Render Cron, worker, Redis, and Key Value charges by
+  combining post-commit attempts, bounded inbox-triggered retry draining, and a manual dispatcher
+- [x] preserve a clean future worker/scheduler seam while documenting that retries are not time-bound
+  when the Render Free web service is asleep
+
+```text
+backend Ruff            PASS - format and lint
+migration consistency   PASS - notification defaults backfilled for existing real members
+Django checks           PASS - local checks
+backend tests           PASS - 151 tests, 91.00% branch coverage
+frontend lint           PENDING FINAL GATE
+frontend typecheck      PENDING FINAL GATE
+frontend tests          PASS - 22 files, 58 tests
+frontend build          PENDING FINAL GATE
+browser verification    PENDING FINAL GATE
+security diff scan      PENDING FINAL GATE
+```
 
 ## WorkOS workspace participation
 

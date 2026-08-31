@@ -465,7 +465,7 @@ def test_resolution_and_verification_updates_drive_auditable_case_state(
     assert CaseDomainEvent.objects.filter(
         case=case,
         event_type="case.verification.passed",
-        delivered_at__isnull=True,
+        processed_at__isnull=True,
     ).exists()
 
 

@@ -144,8 +144,9 @@ describe("operations case register", () => {
       author: null,
       taskId: null,
       externalLinks: [],
-      verificationResult: "",
-      attachments: [],
+    verificationResult: "",
+    mentionedMembers: [],
+    attachments: [],
       createdAt: "2026-08-25T01:00:00Z",
     });
 

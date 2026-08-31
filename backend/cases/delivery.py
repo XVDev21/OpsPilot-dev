@@ -15,8 +15,10 @@ from cases.models import (
     CaseEvidence,
     CaseUpdate,
     CaseUpdateAttachment,
+    CaseUpdateMention,
     OperationsCase,
     Workspace,
+    WorkspaceMember,
 )
 from cases.selectors import acting_member, case_for_user, require_case_manager
 from cases.services import record_case_event, record_domain_event
@@ -53,6 +55,7 @@ def create_case_update(
     task_id: UUID | None = None,
     external_links: list[dict] | None = None,
     verification_result: str = "",
+    mentioned_member_ids: list[UUID] | None = None,
 ) -> CaseUpdate:
     case = case_for_user(user=user, case_id=case_id, detail=True, for_update=True)
     if case.publication_state != OperationsCase.PublicationState.PUBLISHED:
@@ -92,6 +95,23 @@ def create_case_update(
                 status=422,
             )
     member = acting_member(user=user, workspace_id=case.workspace_id)
+    mention_ids = set(mentioned_member_ids or [])
+    mentioned_members = list(
+        WorkspaceMember.objects.filter(
+            id__in=mention_ids,
+            workspace_id=case.workspace_id,
+            app_user__isnull=False,
+            is_sample=False,
+            is_active=True,
+            membership_state=WorkspaceMember.MembershipState.ACTIVE,
+        )
+    )
+    if len(mentioned_members) != len(mention_ids):
+        raise OpsPilotError(
+            code="INVALID_CASE_MENTION",
+            message="Mention only active account-linked members of this workspace.",
+            status=422,
+        )
     update = CaseUpdate.objects.create(
         case=case,
         author=user,
@@ -102,6 +122,9 @@ def create_case_update(
         external_links=external_links or [],
         verification_result=verification_result,
         client_request_id=client_request_id,
+    )
+    CaseUpdateMention.objects.bulk_create(
+        [CaseUpdateMention(update=update, member=mentioned) for mentioned in mentioned_members]
     )
     record_case_event(
         case=case,
@@ -150,6 +173,16 @@ def create_case_update(
             event_type=f"case.verification.{verification_result}",
             actor=user,
             payload={"updateId": str(update.id)},
+        )
+    if mentioned_members:
+        record_domain_event(
+            case=case,
+            event_type="case.mentioned",
+            actor=user,
+            payload={
+                "updateId": str(update.id),
+                "memberIds": [str(mentioned.id) for mentioned in mentioned_members],
+            },
         )
     case.save(update_fields=["status", "resolution_summary", "resolved_at", "updated_at"])
     return update

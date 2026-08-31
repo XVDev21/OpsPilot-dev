@@ -28,6 +28,14 @@ from cases.evidence import (
     evidence_for_user,
     remove_evidence,
 )
+from cases.notifications import (
+    list_notifications,
+    mark_all_notifications_read,
+    mark_notification_read,
+    notification_preferences,
+    process_resend_webhook,
+    update_notification_preferences,
+)
 from cases.presenters import (
     case_detail_dict,
     case_summary_dict,
@@ -49,9 +57,14 @@ from cases.schemas import (
     CreateCaseUpdateInput,
     CreateTextEvidenceInput,
     InviteWorkspaceMemberInput,
+    NotificationListQuery,
+    NotificationListSchema,
+    NotificationPreferencesSchema,
+    NotificationSchema,
     PublishCaseInput,
     UpdateCaseAssignmentInput,
     UpdateCaseInput,
+    UpdateNotificationPreferencesInput,
     UpdateWorkspaceMemberInput,
     WorkspaceContextSchema,
     WorkspaceInvitationList,
@@ -71,6 +84,86 @@ from cases.workos_directory import get_workos_directory
 from runs.schemas import WorkflowRunSchema
 
 router = Router(tags=["operations cases"])
+
+
+def _event_preference_fields(value) -> dict[str, bool | None]:
+    return {
+        "assignment_email": value.assignment,
+        "blocker_email": value.blocker,
+        "mention_email": value.mention,
+        "resolution_email": value.resolution,
+        "verification_email": value.verification,
+        "due_date_email": value.dueDate,
+    }
+
+
+@router.get("/notifications", response=NotificationListSchema, summary="Notification inbox")
+def get_notifications(request, query: Query[NotificationListQuery]):
+    return list_notifications(
+        user=request.auth.user,
+        unread_only=query.unreadOnly,
+        limit=query.limit,
+    )
+
+
+@router.patch(
+    "/notifications/{notification_id}/read",
+    response=NotificationSchema,
+    summary="Mark a notification as read",
+)
+def patch_notification_read(request, notification_id: UUID):
+    return mark_notification_read(user=request.auth.user, notification_id=notification_id)
+
+
+@router.post("/notifications/read-all", response=dict, summary="Mark all notifications read")
+def post_notifications_read_all(request):
+    return {"updated": mark_all_notifications_read(user=request.auth.user)}
+
+
+@router.get(
+    "/notification-preferences",
+    response=NotificationPreferencesSchema,
+    summary="Notification preferences",
+)
+def get_notification_preferences(request):
+    return notification_preferences(user=request.auth.user)
+
+
+@router.put(
+    "/notification-preferences",
+    response=NotificationPreferencesSchema,
+    summary="Update notification preferences",
+)
+def put_notification_preferences(request, payload: UpdateNotificationPreferencesInput):
+    workspace_defaults = None
+    if payload.workspaceDefaults is not None:
+        workspace_defaults = {
+            "email_enabled": payload.workspaceDefaults.emailEnabled,
+            **_event_preference_fields(payload.workspaceDefaults),
+        }
+    return update_notification_preferences(
+        user=request.auth.user,
+        email_enabled=payload.emailEnabled,
+        event_overrides=(
+            _event_preference_fields(payload.eventOverrides)
+            if payload.eventOverrides is not None
+            else {}
+        ),
+        workspace_defaults=workspace_defaults,
+    )
+
+
+@router.post("/resend/events", auth=None, response=dict, summary="Receive signed Resend events")
+def post_resend_event(request):
+    processed = process_resend_webhook(
+        payload=request.body,
+        headers={
+            "svix-id": request.headers.get("svix-id", ""),
+            "svix-timestamp": request.headers.get("svix-timestamp", ""),
+            "svix-signature": request.headers.get("svix-signature", ""),
+        },
+    )
+    return {"received": True, "processed": processed}
 
 
 @router.get("/workspace", response=WorkspaceContextSchema, summary="Current workspace context")
@@ -302,6 +395,7 @@ def post_case_update(request, case_id: UUID, payload: CreateCaseUpdateInput):
             {"label": item.label, "url": str(item.url)} for item in payload.externalLinks
         ],
         verification_result=payload.verificationResult or "",
+        mentioned_member_ids=payload.mentionedMemberIds,
     )
     return Status(201, case_update_dict(update))
 

@@ -173,20 +173,32 @@ PR 4A makes the existing case collaboration model usable by real invited people:
 The backend needs `WORKOS_API_KEY` for directory operations and `WORKOS_WEBHOOK_SECRET` for signed
 events. No Slack, Pumble, Linear, notification, or provider secret is required for this PR.
 
-## Locked PR 4B plan — notification delivery
+## Implemented PR 4B — notification delivery
 
-The next PR should add notification delivery without mixing connector scope into identity work:
+PR 4B adds notification delivery without mixing connector scope into identity work:
 
 1. add default-on email preferences at workspace and personal levels, with per-event controls for
    assignment, blocker, mention, resolution, verification, and due-date changes;
-2. consume `CaseDomainEvent` through an idempotent outbox dispatcher with retries, terminal failure
-   state, and delivery audit records;
-3. ship transactional assignment, blocker, and verification email templates plus authenticated deep
-   links and unsubscribe/preference management;
+2. consume `CaseDomainEvent` through an idempotent, recipient-specific outbox dispatcher with leases,
+   bounded retries, terminal failure state, attempt history, and Resend delivery reconciliation;
+3. ship privacy-minimized transactional assignment, blocker, mention, resolution, verification, and
+   due-date email plus authenticated deep links and preference management;
 4. add an in-product notification inbox, unread state, bulk mark-read, and relevant case deep links;
-5. keep external delivery human-controlled and audit every notification decision;
-6. add permission, retry, preference, accessibility, responsive-browser, and security regression
-   coverage before deployment.
+5. add structured mentions to case updates, limited to active real workspace accounts, so recipients
+   are explicit rather than inferred from free text;
+6. default workspace and personal email preferences on while allowing a personal master opt-out and
+   per-event overrides; sample profiles never receive notifications;
+7. accept only signed Resend webhooks and reconcile delivered, bounced, failed, complained, and
+   suppressed events without storing raw webhook payloads;
+8. keep the Render Free topology cost-free by attempting delivery after commit, opportunistically
+   draining a small retry backlog during authenticated inbox polling, and providing a manual
+   dispatcher command. Timed retry guarantees while the service is asleep remain a paid-worker or
+   scheduler concern.
+
+The notification email deliberately excludes evidence, uploaded images, raw AI prompts, provider
+credentials, and case-update bodies. In-app notifications remain available when Resend is not
+configured. Due-soon digests are deferred because the approved free topology has no always-on worker
+or scheduler.
 
 Slack, Pumble, and Linear remain PR 5 connectors once their app registrations and production redirect
 URLs exist. Their delivery adapters should consume the same domain-event/outbox seam established in

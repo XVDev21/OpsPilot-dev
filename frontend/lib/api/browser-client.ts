@@ -18,6 +18,9 @@ import {
   workspaceInvitationSchema,
   workspaceMemberSchema,
   workspaceReconciliationSchema,
+  notificationListSchema,
+  notificationPreferencesSchema,
+  notificationSchema,
   operationsCaseListSchema,
   operationsCaseDetailSchema,
   caseEvidenceSchema,
@@ -32,6 +35,7 @@ import type {
   IntelligenceLevel,
   ProviderCredentialInput,
   UpdateCaseInput,
+  UpdateNotificationPreferencesInput,
   WorkItemUpdate,
 } from "@/lib/api/types";
 
@@ -317,6 +321,42 @@ export const browserApi = {
     return parseApiResponse(
       workspaceReconciliationSchema,
       await request<unknown>("/api/backend/workspace/reconcile", { method: "POST" }),
+    );
+  },
+  async listNotifications(unreadOnly = false, limit = 30) {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (unreadOnly) query.set("unreadOnly", "true");
+    return parseApiResponse(
+      notificationListSchema,
+      await request<unknown>(`/api/backend/notifications?${query}`),
+    );
+  },
+  async markNotificationRead(notificationId: string) {
+    return parseApiResponse(
+      notificationSchema,
+      await request<unknown>(
+        `/api/backend/notifications/${encodeURIComponent(notificationId)}/read`,
+        { method: "PATCH" },
+      ),
+    );
+  },
+  markAllNotificationsRead: () =>
+    request<{ updated: number }>("/api/backend/notifications/read-all", {
+      method: "POST",
+    }),
+  async notificationPreferences() {
+    return parseApiResponse(
+      notificationPreferencesSchema,
+      await request<unknown>("/api/backend/notification-preferences"),
+    );
+  },
+  async updateNotificationPreferences(input: UpdateNotificationPreferencesInput) {
+    return parseApiResponse(
+      notificationPreferencesSchema,
+      await request<unknown>("/api/backend/notification-preferences", {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
     );
   },
   async listCases(filters?: Record<string, string>) {

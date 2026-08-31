@@ -36,6 +36,16 @@ services:
         sync: false
       - key: WORKOS_INVITATION_EXPIRY_DAYS
         value: "14"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        value: "OpsPilot <onboarding@resend.dev>"
+      - key: NOTIFICATION_REPLY_TO_EMAIL
+        sync: false
+      - key: NOTIFICATION_OPPORTUNISTIC_LIMIT
+        value: "2"
       - key: GEMINI_API_KEY
         sync: false
       - key: PROVIDER_CREDENTIAL_ENCRYPTION_KEYS

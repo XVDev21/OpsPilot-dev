@@ -24,6 +24,10 @@ import type {
   workspaceContextSchema,
   workspaceInvitationSchema,
   workspaceInvitationListSchema,
+  notificationPreferencesSchema,
+  notificationSchema,
+  notificationListSchema,
+  updateNotificationPreferencesInputSchema,
   caseStatusSchema,
   caseDispositionSchema,
   caseIntentSchema,
@@ -65,6 +69,12 @@ export type WorkspaceMemberList = z.infer<typeof workspaceMemberListSchema>;
 export type WorkspaceContext = z.infer<typeof workspaceContextSchema>;
 export type WorkspaceInvitation = z.infer<typeof workspaceInvitationSchema>;
 export type WorkspaceInvitationList = z.infer<typeof workspaceInvitationListSchema>;
+export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
+export type NotificationItem = z.infer<typeof notificationSchema>;
+export type NotificationList = z.infer<typeof notificationListSchema>;
+export type UpdateNotificationPreferencesInput = z.infer<
+  typeof updateNotificationPreferencesInputSchema
+>;
 export type CaseStatus = z.infer<typeof caseStatusSchema>;
 export type CaseDisposition = z.infer<typeof caseDispositionSchema>;
 export type CaseIntent = z.infer<typeof caseIntentSchema>;

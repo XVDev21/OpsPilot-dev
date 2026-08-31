@@ -25,6 +25,30 @@ Case screenshots use local `backend/media` storage during development. Before re
 production, configure the private S3-compatible `CASE_EVIDENCE_S3_*` variables documented in
 `../docs/14_CASE_FIRST_ASSESSMENTS_AND_EVIDENCE.md`; Render Free's filesystem is not durable.
 
+## Case notifications
+
+The authenticated notification inbox works without an email provider. To enable transactional email,
+create a Resend API key, verify a sending domain or subdomain, and configure:
+
+```text
+RESEND_API_KEY
+RESEND_WEBHOOK_SECRET
+DEFAULT_FROM_EMAIL=OpsPilot <notifications@your-verified-domain.example>
+NOTIFICATION_REPLY_TO_EMAIL=support@your-domain.example  # optional
+NOTIFICATION_OPPORTUNISTIC_LIMIT=2
+```
+
+Register `https://<api-host>/api/v1/resend/events` as the Resend webhook endpoint for delivered,
+bounced, failed, complained, and suppressed email events. Webhook signatures are required. OpsPilot
+stores delivery state and identifiers, but not raw webhook bodies, evidence, AI prompts, or provider
+credentials.
+
+The free deployment does not create a Render Cron service. Human case actions enqueue and attempt
+delivery after database commit, and authenticated inbox polling drains a small retry backlog while
+the application is active. Operators can also run `python manage.py dispatch_notifications --limit
+100`. This avoids a monthly scheduler charge, but timed retries are not guaranteed while the Render
+service is asleep. A dedicated worker or paid scheduler can consume the same durable outbox later.
+
 ## Quality gates
 
 ```powershell
@@ -64,4 +88,5 @@ Expired runs are excluded from account history immediately. Purge them permanent
 .\.venv\Scripts\python.exe manage.py purge_expired_runs
 ```
 
-The Render Blueprint schedules this command daily in production.
+The Render Free Blueprint runs this purge during deploy. A strict daily schedule remains deferred
+because Render Cron is a paid resource.

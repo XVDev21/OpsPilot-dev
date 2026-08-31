@@ -10,6 +10,15 @@ import { ThemeSelector } from "@/components/theme/theme-selector";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/app",
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/lib/api/browser-client", () => ({
+  browserApi: {
+    listNotifications: vi.fn().mockResolvedValue({ items: [], unreadCount: 0 }),
+    markNotificationRead: vi.fn(),
+    markAllNotificationsRead: vi.fn(),
+  },
 }));
 
 vi.mock("@/app/app/actions", () => ({
