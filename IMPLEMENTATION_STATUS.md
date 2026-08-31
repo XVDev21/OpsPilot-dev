@@ -2,8 +2,8 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Greenfield monorepo
-**Current milestone:** WorkOS workspace participation (PR 4A)
-**Status:** Implementation complete; release gates passed; draft PR ready
+**Current milestone:** Case notification delivery (PR 4B)
+**Status:** Implementation, release verification, and security review complete; draft PR ready
 
 ## Milestones
 
@@ -21,8 +21,60 @@
 - [x] Case-first intake, private multimodal evidence, and confidence-based assessments
 - [x] Advisory-backed publication, case delivery updates, tasks, and Work Status
 - [x] WorkOS Organization-backed workspace participation and real member invitations
+- [x] Resend-backed case email, durable delivery outbox, and authenticated notification inbox
 - [ ] End-to-end integration
 - [x] Deployment
+
+## Case notification delivery
+
+- [x] provision default-on workspace notification policy and personal member preferences for every
+  real account while excluding sample profiles from all delivery
+- [x] route assignment, blocker, mention, resolution, verification, due-date, and publication signals
+  from durable `CaseDomainEvent` records into recipient-specific in-app notifications
+- [x] add explicit structured mentions for active real workspace members to append-only Case Updates
+- [x] add an authenticated notification inbox, unread counter, bulk mark-read, case deep links, and
+  responsive desktop/mobile notification center
+- [x] expose personal email opt-out and per-event controls in Settings, with owner-managed workspace
+  defaults that never override an individual opt-out
+- [x] deliver privacy-minimized transactional email through Resend with deterministic idempotency,
+  bounded retry state, leases, attempt history, and provider message identifiers
+- [x] reconcile delivered, bounced, failed, complained, and suppressed states through signed,
+  idempotent Resend webhooks without retaining raw webhook bodies
+- [x] enforce the latest workspace policy, personal opt-out, real-member state, and recipient email
+  again under database locks immediately before each external send; pending and retry deliveries are
+  suppressed as soon as a relevant preference changes
+- [x] retain valid Resend webhooks that arrive before the provider message ID is committed, reconcile
+  them after send persistence, and apply monotonic terminal-state precedence across duplicate or
+  out-of-order delivery events
+- [x] keep the approved hobby topology free of Render Cron, worker, Redis, and Key Value charges by
+  combining post-commit attempts, bounded inbox-triggered retry draining, and a manual dispatcher
+- [x] preserve a clean future worker/scheduler seam while documenting that retries are not time-bound
+  when the Render Free web service is asleep
+
+```text
+backend Ruff            PASS - format and lint, Ruff 0.16.4
+migration consistency   PASS - notification defaults backfilled for existing real members
+Django checks           PASS - local and production deployment checks
+backend dependencies    PASS - pip check and pip-audit; no known vulnerabilities
+backend tests           PASS - 155 tests, 90.83% branch coverage
+frontend dependencies   PASS - npm audit; zero known vulnerabilities
+frontend lint           PASS - zero warnings
+frontend typecheck      PASS
+frontend tests          PASS - 22 files, 58 tests
+frontend build          PASS - Next.js 16.3.1, Node 24.19.0, 42 generated routes
+browser verification    PASS - desktop light, mobile dark, system/reduced-motion behavior, no
+                          horizontal overflow or framework overlay, and zero automated WCAG A/AA
+                          violations on the public Demo surface; authenticated notification UI and
+                          BFF behavior covered by tests because local browser verification used
+                          intentionally invalid WorkOS placeholders
+Vercel environment      PASS - all six frontend/AuthKit variables present in Production; public
+                          API/site/callback values match the Render and Vercel deployment contract,
+                          while sensitive WorkOS values remain protected and Render-only provider
+                          secrets remain excluded
+security diff scan      PASS - complete review of all 33 changed production-source items across six
+                          trust surfaces; zero reportable findings after send-time recipient/policy
+                          hardening and out-of-order webhook reconciliation regression coverage
+```
 
 ## WorkOS workspace participation
 

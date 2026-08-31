@@ -31,6 +31,7 @@ import { browserApi } from "@/lib/api/browser-client";
 import { cn } from "@/lib/utils";
 import { ProviderCredentialsPanel } from "@/features/settings/provider-credentials-panel";
 import { LocalConnectorPanel } from "@/features/settings/local-connector-panel";
+import { NotificationPreferencesPanel } from "@/features/settings/notification-preferences-panel";
 
 function PreferenceChoice<T extends string>({
   value,
@@ -276,6 +277,8 @@ export function SettingsPanel({ user }: { user: AppUser }) {
           </p>
         ) : null}
       </section>
+
+      <NotificationPreferencesPanel />
 
       <ProviderCredentialsPanel />
       <LocalConnectorPanel />

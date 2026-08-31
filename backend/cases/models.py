@@ -582,12 +582,193 @@ class CaseDomainEvent(models.Model):
     event_type = models.CharField(max_length=64)
     payload = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    delivered_at = models.DateTimeField(blank=True, null=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         db_table = "case_domain_events"
         ordering = ["created_at", "id"]
         indexes = [
-            models.Index(fields=["delivered_at", "created_at"]),
+            models.Index(fields=["processed_at", "created_at"]),
             models.Index(fields=["case", "created_at"]),
         ]
+
+
+class WorkspaceNotificationPolicy(models.Model):
+    workspace = models.OneToOneField(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="notification_policy",
+    )
+    email_enabled = models.BooleanField(default=True)
+    assignment_email = models.BooleanField(default=True)
+    blocker_email = models.BooleanField(default=True)
+    mention_email = models.BooleanField(default=True)
+    resolution_email = models.BooleanField(default=True)
+    verification_email = models.BooleanField(default=True)
+    due_date_email = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "workspace_notification_policies"
+
+
+class MemberNotificationPreference(models.Model):
+    member = models.OneToOneField(
+        WorkspaceMember,
+        on_delete=models.CASCADE,
+        related_name="notification_preference",
+    )
+    email_enabled = models.BooleanField(default=True)
+    assignment_email = models.BooleanField(blank=True, null=True)
+    blocker_email = models.BooleanField(blank=True, null=True)
+    mention_email = models.BooleanField(blank=True, null=True)
+    resolution_email = models.BooleanField(blank=True, null=True)
+    verification_email = models.BooleanField(blank=True, null=True)
+    due_date_email = models.BooleanField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "member_notification_preferences"
+
+
+class CaseUpdateMention(models.Model):
+    update = models.ForeignKey(CaseUpdate, on_delete=models.CASCADE, related_name="mentions")
+    member = models.ForeignKey(
+        WorkspaceMember,
+        on_delete=models.CASCADE,
+        related_name="case_update_mentions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "case_update_mentions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["update", "member"],
+                name="cases_update_member_mention_uniq",
+            )
+        ]
+
+
+class Notification(models.Model):
+    class Kind(models.TextChoices):
+        ASSIGNMENT = "assignment", "Assignment"
+        BLOCKER = "blocker", "Blocker"
+        MENTION = "mention", "Mention"
+        RESOLUTION = "resolution", "Resolution"
+        VERIFICATION = "verification", "Verification"
+        DUE_DATE = "due-date", "Due date"
+        PUBLISHED = "published", "Published"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="notifications")
+    recipient = models.ForeignKey(
+        WorkspaceMember,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    event = models.ForeignKey(
+        CaseDomainEvent,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    case = models.ForeignKey(
+        OperationsCase,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    title = models.CharField(max_length=200)
+    summary = models.CharField(max_length=500)
+    action_path = models.CharField(max_length=500)
+    read_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "notifications"
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "recipient"],
+                name="cases_event_recipient_notification_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["recipient", "read_at", "-created_at"]),
+            models.Index(fields=["workspace", "-created_at"]),
+        ]
+
+
+class NotificationDelivery(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        SENT = "sent", "Sent"
+        DELIVERED = "delivered", "Delivered"
+        RETRY = "retry", "Retry"
+        FAILED = "failed", "Failed"
+        SUPPRESSED = "suppressed", "Suppressed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    notification = models.OneToOneField(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name="email_delivery",
+    )
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    recipient_email = models.EmailField()
+    idempotency_key = models.CharField(max_length=255, unique=True)
+    provider_message_id = models.CharField(max_length=255, blank=True, db_index=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField()
+    lease_expires_at = models.DateTimeField(blank=True, null=True)
+    last_error_code = models.CharField(max_length=80, blank=True)
+    last_error_message = models.CharField(max_length=500, blank=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+    delivered_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "notification_deliveries"
+        ordering = ["next_attempt_at", "created_at"]
+        indexes = [models.Index(fields=["status", "next_attempt_at"])]
+
+
+class NotificationDeliveryAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    delivery = models.ForeignKey(
+        NotificationDelivery,
+        on_delete=models.CASCADE,
+        related_name="attempts",
+    )
+    attempt_number = models.PositiveSmallIntegerField()
+    outcome = models.CharField(max_length=32)
+    provider_message_id = models.CharField(max_length=255, blank=True)
+    error_code = models.CharField(max_length=80, blank=True)
+    error_message = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "notification_delivery_attempts"
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["delivery", "attempt_number"],
+                name="cases_delivery_attempt_number_uniq",
+            )
+        ]
+
+
+class ResendWebhookReceipt(models.Model):
+    event_id = models.CharField(max_length=255, primary_key=True)
+    event_type = models.CharField(max_length=80)
+    provider_message_id = models.CharField(max_length=255, blank=True, db_index=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = "resend_webhook_receipts"
+        ordering = ["-received_at"]

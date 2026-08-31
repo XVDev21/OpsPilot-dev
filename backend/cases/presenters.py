@@ -204,6 +204,7 @@ def case_update_dict(item) -> dict:
         "taskId": item.task_id,
         "externalLinks": item.external_links,
         "verificationResult": item.verification_result,
+        "mentionedMembers": [member_dict(mention.member) for mention in item.mentions.all()],
         "attachments": [
             {
                 "id": attachment.id,

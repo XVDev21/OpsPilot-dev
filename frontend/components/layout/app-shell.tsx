@@ -15,6 +15,7 @@ import {
   Settings,
   UsersRound,
   FolderKanban,
+  BellRing,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/app/actions";
@@ -25,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { NotificationCenter } from "@/features/notifications/notification-center";
 import type { AppUser } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,7 @@ const navItems = [
   { href: "/app", label: "Overview", icon: LayoutGrid, exact: true },
   { href: "/app/cases", label: "Cases", icon: FolderKanban, exact: false },
   { href: "/app/work-status", label: "Work Status", icon: RadioTower, exact: false },
+  { href: "/app/notifications", label: "Notifications", icon: BellRing, exact: false },
   { href: "/app/team", label: "Team", icon: UsersRound, exact: false },
   { href: "/app/settings", label: "Settings", icon: Settings, exact: false },
 ] as const satisfies readonly {
@@ -228,6 +231,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: AppUse
             <Badge tone={mode === "live" ? "success" : "primary"}>
               {mode === "live" ? "Live" : "Demo"}
             </Badge>
+            <NotificationCenter />
             <AccountMenu user={user} />
           </div>
         </header>

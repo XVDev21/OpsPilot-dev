@@ -11,6 +11,7 @@ interface SheetProps {
   description: string;
   children: ReactNode;
   side?: "left" | "right";
+  closeLabel?: string;
 }
 
 export function Sheet({
@@ -19,6 +20,7 @@ export function Sheet({
   description,
   children,
   side = "right",
+  closeLabel = "Close navigation",
 }: SheetProps) {
   return (
     <Dialog.Root>
@@ -42,7 +44,7 @@ export function Sheet({
             </div>
             <Dialog.Close
               className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-control)] text-foreground-muted transition-colors hover:bg-surface-soft hover:text-foreground"
-              aria-label="Close navigation"
+              aria-label={closeLabel}
             >
               <X aria-hidden="true" className="size-5" />
             </Dialog.Close>

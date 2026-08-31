@@ -20,6 +20,9 @@ import {
   workspaceInvitationSchema,
   workspaceRosterMemberSchema,
   workspaceReconciliationSchema,
+  notificationListSchema,
+  notificationPreferencesSchema,
+  notificationSchema,
   operationsCaseListSchema,
   operationsCaseDetailSchema,
   caseEvidenceSchema,
@@ -34,6 +37,7 @@ import type {
   IntelligenceLevel,
   ProviderCredentialInput,
   UpdateCaseInput,
+  UpdateNotificationPreferencesInput,
   WorkItemUpdate,
 } from "@/lib/api/types";
 
@@ -391,6 +395,46 @@ export const djangoApi = {
     return parseApiResponse(
       workspaceReconciliationSchema,
       await request<unknown>("/workspace/reconcile", { accessToken, method: "POST" }),
+    );
+  },
+  async listNotifications(accessToken: string, search = "") {
+    return parseApiResponse(
+      notificationListSchema,
+      await request<unknown>(`/notifications${search}`, { accessToken }),
+    );
+  },
+  async markNotificationRead(accessToken: string, notificationId: string) {
+    return parseApiResponse(
+      notificationSchema,
+      await request<unknown>(
+        `/notifications/${encodeURIComponent(notificationId)}/read`,
+        { accessToken, method: "PATCH" },
+      ),
+    );
+  },
+  markAllNotificationsRead(accessToken: string) {
+    return request<{ updated: number }>("/notifications/read-all", {
+      accessToken,
+      method: "POST",
+    });
+  },
+  async notificationPreferences(accessToken: string) {
+    return parseApiResponse(
+      notificationPreferencesSchema,
+      await request<unknown>("/notification-preferences", { accessToken }),
+    );
+  },
+  async updateNotificationPreferences(
+    accessToken: string,
+    input: UpdateNotificationPreferencesInput,
+  ) {
+    return parseApiResponse(
+      notificationPreferencesSchema,
+      await request<unknown>("/notification-preferences", {
+        accessToken,
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
     );
   },
   async listCases(accessToken: string, search = "") {

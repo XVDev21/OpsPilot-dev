@@ -331,6 +331,62 @@ export const workspaceReconciliationSchema = z.object({
   invitationCount: z.number().int().nonnegative(),
 });
 
+export const notificationEventPreferencesSchema = z.object({
+  assignment: z.boolean().nullable(),
+  blocker: z.boolean().nullable(),
+  mention: z.boolean().nullable(),
+  resolution: z.boolean().nullable(),
+  verification: z.boolean().nullable(),
+  dueDate: z.boolean().nullable(),
+});
+export const workspaceNotificationDefaultsSchema = z.object({
+  emailEnabled: z.boolean(),
+  assignment: z.boolean(),
+  blocker: z.boolean(),
+  mention: z.boolean(),
+  resolution: z.boolean(),
+  verification: z.boolean(),
+  dueDate: z.boolean(),
+});
+export const notificationPreferencesSchema = z.object({
+  emailEnabled: z.boolean(),
+  eventOverrides: notificationEventPreferencesSchema,
+  effectiveEvents: notificationEventPreferencesSchema,
+  workspaceDefaults: workspaceNotificationDefaultsSchema,
+  canManageWorkspaceDefaults: z.boolean(),
+  providerConfigured: z.boolean(),
+  sender: z.string(),
+});
+export const notificationSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.enum([
+    "assignment",
+    "blocker",
+    "mention",
+    "resolution",
+    "verification",
+    "due-date",
+    "published",
+  ]),
+  title: z.string(),
+  summary: z.string(),
+  caseId: z.string().uuid(),
+  caseKey: z.string(),
+  caseTitle: z.string(),
+  actionPath: z.string().startsWith("/app/cases/"),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export const notificationListSchema = z.object({
+  items: z.array(notificationSchema),
+  unreadCount: z.number().int().nonnegative(),
+});
+export const updateNotificationPreferencesInputSchema = z.object({
+  emailEnabled: z.boolean().optional(),
+  eventOverrides: notificationEventPreferencesSchema.optional(),
+  workspaceDefaults: workspaceNotificationDefaultsSchema.optional(),
+});
+
 export const caseStatusSchema = z.enum([
   "new",
   "triaging",
@@ -467,6 +523,7 @@ export const caseUpdateSchema = z.object({
   taskId: z.string().uuid().nullable(),
   externalLinks: z.array(z.record(jsonValueSchema)),
   verificationResult: z.enum(["", "passed", "failed"]),
+  mentionedMembers: z.array(workspaceMemberSchema),
   attachments: z.array(caseUpdateAttachmentSchema),
   createdAt: z.string(),
 });
@@ -556,6 +613,7 @@ export const createCaseUpdateInputSchema = z.object({
     .max(8)
     .optional(),
   verificationResult: z.enum(["passed", "failed"]).optional(),
+  mentionedMemberIds: z.array(z.string().uuid()).max(12).optional(),
 });
 export const createTextEvidenceInputSchema = z.object({
   text: z.string().trim().min(3).max(3000),

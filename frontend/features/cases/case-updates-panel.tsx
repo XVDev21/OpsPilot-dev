@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   MessageSquareText,
   Send,
+  AtSign,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -19,6 +20,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { browserApi } from "@/lib/api/browser-client";
 import type { CaseUpdate, OperationsCaseDetail } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
 const updateTypes = [
   ["progress", "Progress note"],
@@ -27,6 +29,7 @@ const updateTypes = [
   ["clarification", "Clarification"],
   ["resolution", "Resolution proposal"],
 ] as const;
+const MAX_UPDATE_MENTIONS = 12;
 
 function updateTone(type: CaseUpdate["type"]) {
   if (type === "blocker") return "warning" as const;
@@ -47,6 +50,15 @@ export function CaseUpdatesPanel({
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [verificationResult, setVerificationResult] = useState<"passed" | "failed">("passed");
+  const [mentionedMemberIds, setMentionedMemberIds] = useState<string[]>([]);
+  const members = useQuery({
+    queryKey: ["workspace-members"],
+    queryFn: browserApi.listWorkspaceMembers,
+  });
+  const mentionableMembers =
+    members.data?.items.filter(
+      (member) => member.linkedAccount && member.isActive && !member.isSample,
+    ) ?? [];
   const post = useMutation({
     mutationFn: async () => {
       const update = await browserApi.createCaseUpdate(caseId, {
@@ -54,6 +66,7 @@ export function CaseUpdatesPanel({
         type,
         body,
         ...(type === "verification" ? { verificationResult } : {}),
+        ...(mentionedMemberIds.length ? { mentionedMemberIds } : {}),
       });
       if (file) await browserApi.uploadCaseUpdateImage(caseId, update.id, file);
       return update;
@@ -61,6 +74,7 @@ export function CaseUpdatesPanel({
     onSuccess: async () => {
       setBody("");
       setFile(null);
+      setMentionedMemberIds([]);
       await onChanged();
     },
   });
@@ -122,6 +136,45 @@ export function CaseUpdatesPanel({
             maxLength={6000}
             required
           />
+          {mentionableMembers.length ? (
+            <fieldset className="mt-3">
+              <legend className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <AtSign aria-hidden="true" className="size-4 text-primary" /> Notify teammates
+              </legend>
+              <p className="mt-1 text-[0.6875rem] leading-5 text-foreground-soft">
+                Choose up to {MAX_UPDATE_MENTIONS} account-linked members who should receive this
+                update.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {mentionableMembers.map((member) => {
+                  const selected = mentionedMemberIds.includes(member.id);
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      aria-pressed={selected}
+                      disabled={!selected && mentionedMemberIds.length >= MAX_UPDATE_MENTIONS}
+                      onClick={() =>
+                        setMentionedMemberIds((current) =>
+                          selected
+                            ? current.filter((value) => value !== member.id)
+                            : [...current, member.id],
+                        )
+                      }
+                      className={cn(
+                        "min-h-10 rounded-xl border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+                        selected
+                          ? "border-primary/35 bg-surface-accent text-primary"
+                          : "border-border bg-surface-raised text-foreground-muted hover:border-primary/25",
+                      )}
+                    >
+                      @{member.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ) : null}
           <label htmlFor="case-update-image" className="mt-3 flex items-center gap-2 text-xs font-bold text-foreground">
             <ImagePlus aria-hidden="true" className="size-4 text-primary" /> Supporting image (optional)
           </label>
@@ -169,6 +222,12 @@ export function CaseUpdatesPanel({
                   </time>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground-muted">{update.body}</p>
+                {update.mentionedMembers.length ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-foreground-soft">
+                    <AtSign aria-hidden="true" className="size-3.5 text-primary" />
+                    Notified {update.mentionedMembers.map((member) => member.name).join(", ")}
+                  </p>
+                ) : null}
                 {update.verificationResult ? (
                   <p className="mt-2 flex items-center gap-2 text-xs font-bold text-foreground">
                     {update.verificationResult === "passed" ? <CheckCircle2 className="size-4 text-success" /> : <AlertTriangle className="size-4 text-warning" />}

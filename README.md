@@ -77,7 +77,7 @@ Observable runs, local setup, and reviewed delivery handoffs are documented in
 `docs/12_OBSERVABLE_WORKFLOWS_AND_MODEL_CONNECTIONS.md`. Operations Cases, durable assignment
 relationships, migration behavior, and deployment order are documented in
 `docs/13_OPERATIONS_CASES_AND_ASSIGNMENTS.md`.
-Case-first intake, evidence security, assessment confidence, WorkOS collaboration, and the PR 4B plan
+Case-first intake, evidence security, assessment confidence, WorkOS collaboration, and notification delivery
 are documented in `docs/14_CASE_FIRST_ASSESSMENTS_AND_EVIDENCE.md`.
 
 ## Development environment

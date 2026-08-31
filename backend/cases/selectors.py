@@ -115,6 +115,7 @@ def case_for_user(
             "assessments",
             "updates__author_member",
             "updates__attachments",
+            "updates__mentions__member",
             "updates__task",
             Prefetch(
                 "workflow_runs",

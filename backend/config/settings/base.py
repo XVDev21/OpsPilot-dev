@@ -148,6 +148,12 @@ WORKOS_API_KEY = os.getenv("WORKOS_API_KEY", "").strip()
 WORKOS_WEBHOOK_SECRET = os.getenv("WORKOS_WEBHOOK_SECRET", "").strip()
 WORKOS_INVITATION_EXPIRY_DAYS = int(os.getenv("WORKOS_INVITATION_EXPIRY_DAYS", "14"))
 
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_WEBHOOK_SECRET = os.getenv("RESEND_WEBHOOK_SECRET", "").strip()
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OpsPilot <onboarding@resend.dev>").strip()
+NOTIFICATION_REPLY_TO_EMAIL = os.getenv("NOTIFICATION_REPLY_TO_EMAIL", "").strip()
+NOTIFICATION_OPPORTUNISTIC_LIMIT = int(os.getenv("NOTIFICATION_OPPORTUNISTIC_LIMIT", "2"))
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "").strip()
@@ -216,6 +222,8 @@ if (
     <= 0
 ):
     raise ImproperlyConfigured("Case evidence limits must be positive integers.")
+if NOTIFICATION_OPPORTUNISTIC_LIMIT < 0 or NOTIFICATION_OPPORTUNISTIC_LIMIT > 10:
+    raise ImproperlyConfigured("NOTIFICATION_OPPORTUNISTIC_LIMIT must be between 0 and 10.")
 
 LOGGING = {
     "version": 1,

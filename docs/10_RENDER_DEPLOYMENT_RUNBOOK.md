@@ -17,6 +17,10 @@ a Render frontend, Key Value instance, worker, or cron service.
 - Render cron services and pre-deploy commands require paid instances.
 - Migrations and expired-run purging therefore run in the backend build command. API selectors hide
   expired runs immediately, but strict scheduled physical deletion requires a paid retention cron.
+- Notification email uses the durable database outbox without a Render Cron service. Human case
+  actions attempt delivery after commit, authenticated inbox polling drains a bounded retry backlog,
+  and `python manage.py dispatch_notifications --limit 100` is available for manual recovery. Timed
+  retries are not guaranteed while a free web service is asleep.
 
 This topology is appropriate only for the approved personal, non-commercial hobby deployment. Before
 launching commercially, move the API and database to paid instances and restore a daily retention cron.
@@ -30,6 +34,10 @@ WORKOS_CLIENT_ID
 WORKOS_API_KEY
 WORKOS_ISSUER=<exact issuer for the WorkOS environment>
 WORKOS_WEBHOOK_SECRET=<signing secret for the OpsPilot webhook endpoint>
+RESEND_API_KEY=<Resend secret API key; optional until email is enabled>
+RESEND_WEBHOOK_SECRET=<signing secret for https://<api-host>/api/v1/resend/events>
+DEFAULT_FROM_EMAIL=OpsPilot <notifications@your-verified-domain.example>
+NOTIFICATION_REPLY_TO_EMAIL=<optional reply-to mailbox>
 GEMINI_API_KEY
 AI_PLATFORM_PROVIDERS=gemini
 FRONTEND_ORIGIN
@@ -63,7 +71,12 @@ NEXT_PUBLIC_WORKOS_REDIRECT_URI
 ```
 
 Only `NEXT_PUBLIC_*` values are exposed to the browser. Provider keys remain backend-only, and WorkOS
-server secrets remain server-only.
+server secrets remain server-only. `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, provider credentials,
+and `PROVIDER_CREDENTIAL_ENCRYPTION_KEYS` belong only on Render; never duplicate them into Vercel.
+
+Keep the WorkOS variables scoped to Production unless a separately isolated WorkOS environment is
+available for Preview deployments. Reusing production AuthKit secrets in arbitrary pull-request
+previews broadens the credential boundary and is not required for Vercel to run its build checks.
 
 ## First-deploy URL sequence
 
@@ -124,3 +137,7 @@ even when both deployments use the same WorkOS environment.
 10. Verify history, credential source, run detail, manual run deletion, and cross-account isolation.
 11. Check desktop, mobile, light, dark, system, and reduced-motion behavior.
 12. Sign out and scan Vercel and Render logs for secret leakage or runtime errors.
+13. Disable one personal email event after a delivery has been queued and confirm the outbox records
+    it as suppressed without contacting Resend; then restore the preference.
+14. In Resend test mode, deliver a signed webhook before the matching provider message ID is stored
+    and confirm the pending receipt reconciles after the send record is committed.

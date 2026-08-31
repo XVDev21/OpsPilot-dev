@@ -191,12 +191,20 @@ def record_domain_event(
     payload: dict | None = None,
 ) -> CaseDomainEvent:
     """Persist a notification-ready event without performing external delivery."""
-    return CaseDomainEvent.objects.create(
+    event = CaseDomainEvent.objects.create(
         case=case,
         actor=actor,
         event_type=event_type,
         payload=payload or {},
     )
+    transaction.on_commit(lambda: _dispatch_domain_event(event.id))
+    return event
+
+
+def _dispatch_domain_event(event_id: UUID) -> None:
+    from cases.notifications import safe_dispatch_domain_event
+
+    safe_dispatch_domain_event(event_id)
 
 
 @transaction.atomic
@@ -333,8 +341,18 @@ def update_case(
         case.confidence = confidence
         update_fields.append("confidence")
     if due_date_supplied and due_date != case.due_date:
+        previous = case.due_date
         case.due_date = due_date
         update_fields.append("due_date")
+        record_domain_event(
+            case=case,
+            event_type="case.due-date.changed",
+            actor=user,
+            payload={
+                "from": previous.isoformat() if previous else None,
+                "to": due_date.isoformat() if due_date else None,
+            },
+        )
     if resolution_summary is not None and resolution_summary != case.resolution_summary:
         case.resolution_summary = resolution_summary
         update_fields.append("resolution_summary")

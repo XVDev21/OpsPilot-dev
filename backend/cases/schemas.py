@@ -119,6 +119,72 @@ class WorkspaceReconciliationSchema(Schema):
     invitationCount: int
 
 
+class NotificationEventPreferencesSchema(Schema):
+    assignment: bool | None
+    blocker: bool | None
+    mention: bool | None
+    resolution: bool | None
+    verification: bool | None
+    dueDate: bool | None
+
+
+class WorkspaceNotificationDefaultsSchema(Schema):
+    emailEnabled: bool
+    assignment: bool
+    blocker: bool
+    mention: bool
+    resolution: bool
+    verification: bool
+    dueDate: bool
+
+
+class NotificationPreferencesSchema(Schema):
+    emailEnabled: bool
+    eventOverrides: NotificationEventPreferencesSchema
+    effectiveEvents: NotificationEventPreferencesSchema
+    workspaceDefaults: WorkspaceNotificationDefaultsSchema
+    canManageWorkspaceDefaults: bool
+    providerConfigured: bool
+    sender: str
+
+
+class UpdateNotificationPreferencesInput(Schema):
+    emailEnabled: bool | None = None
+    eventOverrides: NotificationEventPreferencesSchema | None = None
+    workspaceDefaults: WorkspaceNotificationDefaultsSchema | None = None
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one notification preference change.")
+        return self
+
+
+class NotificationSchema(Schema):
+    id: UUID
+    kind: Literal[
+        "assignment", "blocker", "mention", "resolution", "verification", "due-date", "published"
+    ]
+    title: str
+    summary: str
+    caseId: UUID
+    caseKey: str
+    caseTitle: str
+    actionPath: str
+    readAt: datetime | None
+    createdAt: datetime
+
+
+class NotificationListSchema(Schema):
+    items: list[NotificationSchema]
+    unreadCount: int
+
+
+class NotificationListQuery(Schema):
+    unreadOnly: bool = False
+    limit: int = Field(default=30, ge=1, le=100)
+
+
 class CaseSummarySchema(Schema):
     id: UUID
     key: str
@@ -316,6 +382,7 @@ class CaseUpdateSchema(Schema):
     taskId: UUID | None
     externalLinks: list[dict]
     verificationResult: Literal["", "passed", "failed"]
+    mentionedMembers: list[WorkspaceMemberSchema]
     attachments: list[CaseUpdateAttachmentSchema]
     createdAt: datetime
 
@@ -332,6 +399,7 @@ class CreateCaseUpdateInput(Schema):
     taskId: UUID | None = None
     externalLinks: list[ExternalLinkInput] = Field(default_factory=list, max_length=8)
     verificationResult: Literal["passed", "failed"] | None = None
+    mentionedMemberIds: list[UUID] = Field(default_factory=list, max_length=12)
 
     @model_validator(mode="after")
     def validate_verification(self):
