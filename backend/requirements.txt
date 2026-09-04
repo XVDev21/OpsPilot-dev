@@ -7,7 +7,7 @@ dj-database-url==3.1.2
 django-cors-headers==4.9.0
 django-ninja==1.6.3
 django-storages==1.14.6
-google-genai==2.18.1
+google-genai==2.21.0
 gunicorn==26.2.0
 httpx==0.28.1
 openai==3.5.0
