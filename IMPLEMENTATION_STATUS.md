@@ -1,9 +1,28 @@
 # OpsPilot AI - Implementation Status
 
 **Environment:** Windows / PowerShell
-**Project type:** Greenfield monorepo
-**Current milestone:** Case notification delivery (PR 4B)
-**Status:** Implementation, release verification, and security review complete; draft PR ready
+**Project type:** Existing deployed monorepo
+**Current milestone:** Maintenance and production-readiness review (September 13, 2026)
+**Status:** Case notification delivery shipped in merged PR #39; dependency consolidation under verification
+
+## September 13, 2026 — current review
+
+The application is already deployed to Vercel and Render. Continue the existing implementation;
+older milestone checklists below are historical evidence, not instructions to scaffold again.
+See `docs/15_PROJECT_REVIEW_2026_09_13.md` for findings, PR decisions, and the next release gates.
+
+- Confirmed production Google sign-in, the authenticated personal workspace, existing case register,
+  and Work Status reads through Vercel and Django. This closes the earlier sign-in/read-path evidence
+  gap, but does not establish a complete multi-user, provider, evidence-storage, or email lifecycle.
+- Confirmed Render PostgreSQL 18 is available on the Free plan and its dashboard states that it
+  expires September 13, 2026. Database continuity requires urgent owner action; no paid plan was changed.
+- Confirmed the API health endpoint returns HTTP 200 after cold start. It does not query the database.
+- Reviewed open dependency PRs #40–#49 and combined their commits locally, preserving all updates.
+- Combined backend validation: Ruff lint/format, migration consistency, system check, dependency
+  consistency, and 155 tests pass; branch coverage is 90.83%.
+- Combined frontend baseline: lint, typecheck, and 58 tests across 22 files pass. Security patches
+  for Vitest and the transitive YAML parser are being validated with the maintenance release.
+- Corrected the startup documents that incorrectly described this as a blank repository.
 
 ## Milestones
 

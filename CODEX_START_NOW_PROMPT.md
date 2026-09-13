@@ -1,21 +1,16 @@
-# Codex — Start Building Now
+# Codex — continue OpsPilot
 
-This is a **blank greenfield repository**. Do not wait for a starter project.
+This is an existing deployed application, not a blank repository. Preserve the implemented Next.js
+frontend, Django/Ninja backend, local connector, database history, and Demo Mode.
 
-First verify the current workspace with `Get-Location`, `git rev-parse --show-toplevel`, `git remote -v`, and `git status`. Confirm it is the OpsPilot repository.
+First verify `Get-Location`, `git rev-parse --show-toplevel`, `git remote -v`, and `git status`.
+Then read `AGENTS.md`, `START_HERE.md`, `IMPLEMENTATION_STATUS.md`, recent commits and PRs, and the
+current case/collaboration/deployment documentation referenced there.
 
-Then read, in order:
+Work on the user's requested phase. Do not repeat scaffolding or infer that shipped features are
+unimplemented from the original bootstrap plans. Distinguish implementation, automated verification,
+and actual production integration evidence.
 
-1. `START_HERE.md`
-2. `AGENTS.md`
-3. `docs/00_BOOTSTRAP_FROM_SCRATCH.md`
-4. `docs/01_PRODUCT_ARCHITECTURE.md`
-5. `docs/02_FRONTEND_PART_1_BUILD_NOW.md`
-
-Immediately scaffold `frontend/` using the current supported Next.js App Router + TypeScript setup and continue **in the same task** through all of Frontend Part 1. Do not stop after scaffolding.
-
-Treat design, visual depth, themes, purposeful animation, mobile responsiveness, accessibility, final copy, testing, and browser iteration as required implementation work—not optional polish.
-
-Use deterministic Demo Mode so every workflow is functional without the backend. Do not create Django, WorkOS integration, or live AI calls yet.
-
-Before finishing, run lint, typecheck, tests, production build, browser-check desktop/mobile/light/dark, fix visible defects, and update `IMPLEMENTATION_STATUS.md`.
+Before editing, state files, dependencies, contracts, and non-goals. After implementation, run the
+appropriate lint, typecheck, tests, build, and browser checks and update `IMPLEMENTATION_STATUS.md`.
+Use Windows PowerShell and npm; keep frontend and backend independently deployable.
