@@ -1,5 +1,21 @@
 # OpsPilot project and PR review — September 13, 2026
 
+## September 14 release follow-up
+
+PR #50 consolidates the original commits of #40–#49 and the targeted development-dependency security
+patches. All GitHub CI jobs and the Vercel preview pass; the local production build passes. The
+preview browser verifies real validation and deterministic triage output. Local Windows case-form
+timing was variable around five seconds; diagnostic testing and the full GitHub suite pass without
+changing assertions or committing a larger timeout. See `IMPLEMENTATION_STATUS.md` for details.
+
+**The database expiration is now an active incident:** on September 14, the authenticated Render
+dashboard reports Suspended / Free database expired and warns that all underlying data will be
+deleted in 14 days unless upgraded. The plan page displays a $6/month minimum compute option but
+its edit controls are disabled in the inspected session. Billing approval and provider recovery
+are separate from the authorized code merges. Preserve the database; do not delete/recreate it.
+Production backend deployments that run migrations may fail until database service is restored.
+The September 13 working-session observations below are historical, not a current availability claim.
+
 ## Assessment
 
 OpsPilot is an existing deployed case-management product with AI-assisted assessment. The latest
