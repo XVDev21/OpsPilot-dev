@@ -1,9 +1,53 @@
 # OpsPilot AI - Implementation Status
 
 **Environment:** Windows / PowerShell
-**Project type:** Greenfield monorepo
-**Current milestone:** Case notification delivery (PR 4B)
-**Status:** Implementation, release verification, and security review complete; draft PR ready
+**Project type:** Existing deployed monorepo
+**Current milestone:** Maintenance release and production recovery (September 14, 2026)
+**Status:** Maintenance verification complete; production database recovery requires owner action
+
+## September 14, 2026 — release update
+
+- Maintenance PR #50 preserves and consolidates all ten dependency PRs (#40–#49), aligns Next.js
+  and eslint-config-next at 16.3.4, patches Vitest/mocker to 4.1.11 and js-yaml to 4.3.2, and fixes
+  the misleading greenfield startup instructions. No feature rewrite or schema migration is added.
+- GitHub CI passes frontend lint, typecheck, all 58 tests, and production build; both Linux and
+  Windows backend jobs pass. Local backend tests also pass: 155 tests, 90.83% branch coverage.
+- Local production build passes with 42 generated pages. npm audit and the isolated Python
+  environment audit report no known vulnerabilities after updating its pip installer.
+- Two Windows frontend runs hit the existing five-second case-form test limit. A diagnostic run
+  passed all three case tests (the affected test completed in 3.786 seconds); the full unmodified
+  default-timeout suite passed in GitHub CI. No assertion was removed or timeout committed.
+- Vercel preview passes the build and browser form-validation/sample-triage checks. Production
+  desktop/mobile light/dark checks and authenticated case/Work Status reads were verified on
+  September 13. A local preview-server launch was blocked by automatic policy, so preview browser
+  checks used Vercel. Reduced-motion behavior is covered by the existing automated tests.
+- **Production incident:** Render now reports `opspilot-db` as **Suspended / Free database expired**.
+  The dashboard says its underlying data will be deleted in 14 days unless upgraded. The successful
+  authenticated reads recorded on September 13 do not establish availability after this suspension.
+  The lowest listed paid compute is $6/month, but the expired database's plan controls are disabled
+  in the inspected session. No billing change, data deletion, or access-rule change was made.
+- **Next:** recover the existing database and establish backups; verify the authenticated case
+  lifecycle; add PostgreSQL CI/readiness and required merge checks; correct stale product copy;
+  only then proceed to the next external connector.
+
+## September 13, 2026 — current review
+
+The application is already deployed to Vercel and Render. Continue the existing implementation;
+older milestone checklists below are historical evidence, not instructions to scaffold again.
+See `docs/15_PROJECT_REVIEW_2026_09_13.md` for findings, PR decisions, and the next release gates.
+
+- Confirmed production Google sign-in, the authenticated personal workspace, existing case register,
+  and Work Status reads through Vercel and Django. This closes the earlier sign-in/read-path evidence
+  gap, but does not establish a complete multi-user, provider, evidence-storage, or email lifecycle.
+- Confirmed Render PostgreSQL 18 is available on the Free plan and its dashboard states that it
+  expires September 13, 2026. Database continuity requires urgent owner action; no paid plan was changed.
+- Confirmed the API health endpoint returns HTTP 200 after cold start. It does not query the database.
+- Reviewed open dependency PRs #40–#49 and combined their commits locally, preserving all updates.
+- Combined backend validation: Ruff lint/format, migration consistency, system check, dependency
+  consistency, and 155 tests pass; branch coverage is 90.83%.
+- Combined frontend baseline: lint, typecheck, and 58 tests across 22 files pass. Security patches
+  for Vitest and the transitive YAML parser are being validated with the maintenance release.
+- Corrected the startup documents that incorrectly described this as a blank repository.
 
 ## Milestones
 

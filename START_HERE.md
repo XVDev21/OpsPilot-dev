@@ -1,66 +1,35 @@
-# START HERE — OpsPilot AI Greenfield Build
+# Start here — continue the existing OpsPilot application
 
-This package is designed for a **blank Git repository**.
+OpsPilot is an implemented, deployed product. Do not scaffold or replace `frontend/`, `backend/`,
+or `connector/`. The original bootstrap documents are historical plans, not current instructions to
+restart development.
 
-Do not create a Next.js or Django starter manually before using it.
+## Establish current state
 
-## Preferred setup
+1. Verify the repository root, remote, branch, and working changes using `AGENTS.md`.
+2. Read `IMPLEMENTATION_STATUS.md`, including the most recent dated verification.
+3. Read `README.md` and the recent Git history and pull requests.
+4. Read `docs/13_OPERATIONS_CASES_AND_ASSIGNMENTS.md` and
+   `docs/14_CASE_FIRST_ASSESSMENTS_AND_EVIDENCE.md` for the current product contracts.
+5. Read `docs/10_RENDER_DEPLOYMENT_RUNBOOK.md` before deployment work.
+6. Read `docs/15_PROJECT_REVIEW_2026_09_13.md` for the maintenance review and remaining release gaps.
 
-Place the contents of this package directly in the root of the blank OpsPilot repository:
+## Current product
 
-```text
-OpsPilot-AI/
-├── START_HERE.md
-├── AGENTS.md
-├── IMPLEMENTATION_STATUS.md
-├── CODEX_START_NOW_PROMPT.md
-├── README.md
-└── docs/
-```
+Authenticated work centers Operations Cases: capture intent and private evidence, run a versioned
+assessment, review and apply the recommendation, publish and assign, record delivery updates, and
+verify resolution. WorkOS workspaces and roles govern access. Resend-backed notifications use a
+durable outbox. Human decisions remain authoritative.
 
-Then open that repository folder in Codex and use `CODEX_START_NOW_PROMPT.md`.
+The three deterministic public Demo workflows remain useful as a backend-independent fallback.
+They are not a substitute for verifying the authenticated case lifecycle.
 
-## What Codex must do on the first run
+## Continue one bounded phase at a time
 
-The first run is intentionally substantial.
+Use the Windows-native development commands in `README.md`. Preserve the independent Vercel
+frontend and Render Django deployments, shared schemas, historical records, and server-only
+credentials. State the proposed scope before editing and verify the resulting behavior afterward.
 
-Codex should:
-
-1. Verify it is operating in the correct Git repository.
-2. Read the project plans.
-3. Scaffold `frontend/` using the current supported Next.js starter.
-4. Establish the frontend architecture and design system.
-5. Install only the dependencies required by Frontend Part 1.
-6. Build the landing page, public product/security pages, app shell, and all three workflow experiences.
-7. Implement deterministic Demo Mode using final result schemas.
-8. Implement light, dark, and system themes.
-9. Implement responsive mobile layouts and purposeful motion.
-10. Run lint, type checks, tests, build, and browser verification.
-11. Iterate on visible defects before stopping.
-12. Update `IMPLEMENTATION_STATUS.md`.
-
-It must **not** create the Django backend during the first run.
-
-## First visible milestone
-
-The first coding run should produce a polished, presentation-ready frontend that already demonstrates:
-
-```text
-Landing
-→ Workflow catalog
-→ Bug Triage / Meeting Actions / Status Update
-→ Real form
-→ Run Demo
-→ Final structured result
-```
-
-Demo Mode is intentionally deterministic and clearly labeled. It is not a fake AI request.
-
-## Next milestones
-
-After approving the first UI milestone:
-
-1. Frontend Part 2 — WorkOS + live API-ready frontend
-2. Backend Part 1 — Django foundation and WorkOS JWT
-3. Backend Part 2 — Gemini workflow engine
-4. End-to-end integration and deployment
+Prioritize database continuity and production integration evidence before expanding connector or
+AI-provider scope. Never treat an old checklist, successful preview, or basic health response as
+proof that every live integration has been verified.
