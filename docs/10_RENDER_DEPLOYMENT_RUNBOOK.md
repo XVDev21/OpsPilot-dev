@@ -120,7 +120,9 @@ even when both deployments use the same WorkOS environment.
 
 ## Release smoke
 
-1. Confirm `GET https://<api-host>/api/v1/health` returns healthy after any cold start.
+1. Confirm `GET https://<api-host>/api/v1/health` returns liveness, then confirm
+   `GET https://<api-host>/api/v1/health/ready` returns `status: ready` and `database: ok`.
+   A healthy liveness response alone does not prove that PostgreSQL is available.
 2. Open the Vercel frontend, sign in with Google, and confirm the personal workspace loads.
 3. Open Team, enable collaboration, and confirm the browser returns in the newly selected WorkOS
    Organization session.

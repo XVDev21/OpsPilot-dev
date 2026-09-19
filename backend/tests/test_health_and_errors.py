@@ -2,6 +2,7 @@ from uuid import UUID
 
 import jwt
 import pytest
+from django.db import OperationalError
 from django.test import Client
 
 pytestmark = pytest.mark.django_db
@@ -17,6 +18,43 @@ def test_health_is_public_and_returns_request_id(client: Client) -> None:
         "version": "v1",
     }
     UUID(response.headers["X-Request-ID"])
+
+
+def test_readiness_is_public_and_checks_database(client: Client) -> None:
+    response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "service": "opspilot-api",
+        "version": "v1",
+        "database": "ok",
+    }
+    UUID(response.headers["X-Request-ID"])
+
+
+def test_readiness_returns_service_unavailable_when_database_is_down(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class UnavailableCursor:
+        def __enter__(self):
+            raise OperationalError("database unavailable")
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    monkeypatch.setattr("common.api.connection.cursor", lambda: UnavailableCursor())
+
+    response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "unavailable",
+        "service": "opspilot-api",
+        "version": "v1",
+        "database": "unavailable",
+    }
 
 
 def test_valid_request_id_is_preserved(client: Client) -> None:
