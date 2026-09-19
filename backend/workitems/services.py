@@ -183,7 +183,7 @@ def update_work_item(
     blocker_reason_supplied: bool = False,
 ) -> WorkItem:
     item = (
-        WorkItem.objects.select_for_update()
+        WorkItem.objects.select_for_update(of=("self",))
         .select_related("case", "case__workspace", "assignee")
         .filter(id=item_id)
         .filter(

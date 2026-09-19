@@ -96,15 +96,24 @@ def case_for_user(
     detail: bool = False,
     for_update: bool = False,
 ) -> OperationsCase:
-    queryset = (
-        _visible_cases(user)
-        .filter(id=case_id)
-        .select_related(
-            "workspace",
-            "created_by",
-            "assignment__assignee",
-            "published_assessment",
+    if for_update:
+        # The public visibility query may require DISTINCT over workspace memberships.
+        # PostgreSQL rejects SELECT DISTINCT combined with FOR UPDATE, so authorize first
+        # and lock the concrete case row in a second query.
+        visible_case_id = (
+            _visible_cases(user).filter(id=case_id).values_list("id", flat=True).first()
         )
+        if visible_case_id is None:
+            raise OpsPilotError(
+                code="NOT_FOUND",
+                message="That operations case was not found.",
+                status=404,
+            )
+        queryset = OperationsCase.objects.filter(id=visible_case_id)
+    else:
+        queryset = _visible_cases(user).filter(id=case_id)
+    queryset = queryset.select_related(
+        "workspace", "created_by", "assignment__assignee", "published_assessment"
     )
     if for_update:
         queryset = queryset.select_for_update()

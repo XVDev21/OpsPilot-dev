@@ -20,7 +20,7 @@ MAX_ATTEMPTS = 3
 def claim_next_job(*, connector: LocalConnector) -> dict | None:
     now = timezone.now()
     exhausted = (
-        LocalConnectorJob.objects.select_for_update()
+        LocalConnectorJob.objects.select_for_update(of=("self",))
         .select_related("run")
         .filter(
             connector=connector,
@@ -39,7 +39,7 @@ def claim_next_job(*, connector: LocalConnector) -> dict | None:
     )
     expired.update(status=LocalConnectorJob.Status.QUEUED, lease_expires_at=None)
     job = (
-        LocalConnectorJob.objects.select_for_update(skip_locked=True)
+        LocalConnectorJob.objects.select_for_update(skip_locked=True, of=("self",))
         .select_related("run")
         .filter(connector=connector, status=LocalConnectorJob.Status.QUEUED)
         .order_by("created_at")
@@ -88,7 +88,7 @@ def complete_job(
     error_code: str | None,
 ) -> WorkflowRun:
     job = (
-        LocalConnectorJob.objects.select_for_update()
+        LocalConnectorJob.objects.select_for_update(of=("self",))
         .select_related("run")
         .filter(connector=connector, run_id=run_id)
         .first()
