@@ -766,11 +766,11 @@ def test_private_image_evidence_is_normalized_authorized_and_removable(
         )
         assert content.status_code == 200
         assert content["Cache-Control"] == "private, no-store"
-        content.close()
         removed = authenticated_client.delete(
             f"/api/v1/cases/{case['id']}/evidence/{evidence['id']}"
         )
         assert removed.status_code == 204
+        content.close()
 
 
 def test_text_only_provider_rejects_case_with_image_evidence(
