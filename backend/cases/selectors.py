@@ -116,7 +116,7 @@ def case_for_user(
         "workspace", "created_by", "assignment__assignee", "published_assessment"
     )
     if for_update:
-        queryset = queryset.select_for_update()
+        queryset = queryset.select_for_update(of=("self",))
     if detail:
         queryset = queryset.prefetch_related(
             "events__actor",

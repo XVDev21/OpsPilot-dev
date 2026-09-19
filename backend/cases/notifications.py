@@ -485,9 +485,9 @@ def _claim_delivery() -> NotificationDelivery | None:
         next_attempt_at__lte=now,
     ).select_related("notification__case", "notification__recipient__app_user")
     if connection.features.has_select_for_update_skip_locked:
-        candidates = candidates.select_for_update(skip_locked=True)
+        candidates = candidates.select_for_update(skip_locked=True, of=("self",))
     else:
-        candidates = candidates.select_for_update()
+        candidates = candidates.select_for_update(of=("self",))
     delivery = candidates.order_by("next_attempt_at", "created_at").first()
     if delivery is None:
         return None
