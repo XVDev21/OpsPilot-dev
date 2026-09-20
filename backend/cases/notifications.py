@@ -197,7 +197,7 @@ def list_notifications(*, user: AppUser, unread_only: bool, limit: int) -> dict[
 def mark_notification_read(*, user: AppUser, notification_id: UUID) -> dict[str, Any]:
     _, member = selected_workspace_for_user(user)
     notification = (
-        Notification.objects.select_for_update()
+        Notification.objects.select_for_update(of=("self",))
         .select_related("case")
         .filter(id=notification_id, recipient=member)
         .first()
@@ -237,7 +237,7 @@ def _notification_payload(notification: Notification) -> dict[str, Any]:
 @transaction.atomic
 def dispatch_domain_event(event_id: UUID) -> int:
     event = (
-        CaseDomainEvent.objects.select_for_update()
+        CaseDomainEvent.objects.select_for_update(of=("self",))
         .select_related("case__workspace", "case__created_by", "actor")
         .filter(id=event_id)
         .first()
@@ -447,7 +447,7 @@ def _suppress_disallowed_deliveries(
         candidates = candidates.filter(notification__workspace_id=workspace_id)
     if member_id is not None:
         candidates = candidates.filter(notification__recipient_id=member_id)
-    candidates = candidates.select_for_update().select_related(
+    candidates = candidates.select_for_update(of=("self",)).select_related(
         "notification__case",
         "notification__event",
         "notification__recipient__app_user",
@@ -485,9 +485,9 @@ def _claim_delivery() -> NotificationDelivery | None:
         next_attempt_at__lte=now,
     ).select_related("notification__case", "notification__recipient__app_user")
     if connection.features.has_select_for_update_skip_locked:
-        candidates = candidates.select_for_update(skip_locked=True)
+        candidates = candidates.select_for_update(skip_locked=True, of=("self",))
     else:
-        candidates = candidates.select_for_update()
+        candidates = candidates.select_for_update(of=("self",))
     delivery = candidates.order_by("next_attempt_at", "created_at").first()
     if delivery is None:
         return None
@@ -510,7 +510,7 @@ def _send_delivery(delivery_id: UUID) -> None:
         member_id=delivery_snapshot.notification.recipient_id
     )
     delivery = (
-        NotificationDelivery.objects.select_for_update()
+        NotificationDelivery.objects.select_for_update(of=("self",))
         .select_related(
             "notification__case",
             "notification__event",

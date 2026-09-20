@@ -22,6 +22,13 @@ class HealthResponse(Schema):
     version: str
 
 
+class ReadinessResponse(Schema):
+    status: str
+    service: str
+    version: str
+    database: str
+
+
 def error_envelope(
     *,
     code: str,

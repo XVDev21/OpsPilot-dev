@@ -30,6 +30,16 @@
   lifecycle; add PostgreSQL CI/readiness and required merge checks; correct stale product copy;
   only then proceed to the next external connector.
 
+## September 19, 2026 — production readiness phase
+
+- Added public `GET /api/v1/health/ready`, which executes a lightweight database query and returns
+  HTTP 503 with a stable unavailable payload when PostgreSQL cannot be reached. The existing
+  `/api/v1/health` endpoint remains a liveness check.
+- Added a dedicated GitHub Actions PostgreSQL 16 job while preserving Windows/Linux SQLite checks.
+  The PostgreSQL job runs migrations, Django checks, Ruff validation, and the full backend suite.
+- The Render database must be restored before this readiness endpoint can pass in production. No
+  production settings, credentials, billing, or database data were changed.
+
 ## September 13, 2026 — current review
 
 The application is already deployed to Vercel and Render. Continue the existing implementation;
