@@ -2,8 +2,43 @@
 
 **Environment:** Windows / PowerShell
 **Project type:** Existing deployed monorepo
-**Current milestone:** Maintenance release and production recovery (September 14, 2026)
-**Status:** Maintenance verification complete; production database recovery requires owner action
+**Current milestone:** Deployment recovery (September 20, 2026)
+**Status:** Frontend dependency repair verified locally; paid database recovery declined, free replacement proposed
+
+## September 20, 2026 — deployment recovery
+
+- PR #61 and dependency PRs #51–#54 and #56–#60 are merged. No open PRs remained at inspection.
+  PR #61 adds database readiness and PostgreSQL CI; its PostgreSQL findings also corrected row
+  locking on distinct/nullable joins and a streamed-response test connection lifecycle issue.
+- Latest Render deployment `dep-danp7in40ujc73cmumm0` of main `684df68` failed during migrations
+  with the same PostgreSQL hostname-resolution error as the September 14 deployment. The database
+  dashboard confirms **Suspended / Free database expired**, with **7 days until data deletion**
+  at inspection. This is a database availability incident, not evidence that PR #50 broke DNS.
+- The database plan page lists $6/month minimum compute, but every plan selector and Edit are
+  disabled. The owner declined paid recovery; no upgrade or further Render redeployment was
+  attempted. Preserve the existing database while determining whether its data can be exported.
+- Separately, PR #60 changed React DOM to 19.3.0 while React remained 19.2.8. Main CI run
+  `35498540858` failed at `npm ci` with an unsatisfied React peer dependency; all three backend
+  jobs passed. Restore React DOM to the existing React 19.2.8 release and group React runtime/type
+  updates in Dependabot so future version updates are reviewed together.
+- Recovery order: restore the database, take a backup, deploy the verified main revision, check
+  `/api/v1/health/ready`, then verify authenticated case and Work Status reads. Liveness alone
+  does not establish database availability. The latest confirmed live backend remains PR #39.
+- Continue `docs/15_PROJECT_REVIEW_2026_09_13.md` and its release gates after recovery. Main has
+  no branch protection at inspection; requiring current frontend/backend CI before merges remains
+  the next repository safeguard. No billing, credentials, networking, or production data changed.
+- Local repair validation: clean `npm ci`, ESLint, TypeScript, all 58 frontend tests, and production
+  build pass. The lockfile changes only React DOM and its scheduler dependency.
+- Proposed free replacement: retain Vercel and the Render API, move PostgreSQL to Neon Free
+  (0.5 GB storage and 100 CU-hours/month per project, per September 2026 official documentation).
+  Supabase Free is an alternative with 500 MB database storage, but pauses after a week of
+  inactivity. These are proposals, not completed provisioning or migration.
+- A replacement requires an owner-created free database and securely configured `DATABASE_URL`,
+  an export/backup to retain existing records (or explicit approval for an empty database), and
+  an updated Blueprint that does not keep binding the API to the expired Render database.
+  Keep WorkOS authentication and existing Django migrations; validate readiness and authenticated
+  workflows after deployment. No old data can be assumed recoverable while Render is suspended.
+  Sources: https://neon.com/blog/neon-backend-is-ga and https://supabase.com/pricing.
 
 ## September 14, 2026 — release update
 
